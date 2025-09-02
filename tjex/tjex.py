@@ -17,7 +17,7 @@ from tempfile import NamedTemporaryFile
 
 import argcomplete
 
-import tjex.logging
+from tjex import logging
 from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
 from tjex.jq import Jq, JqResult
 from tjex.logging import logger
@@ -74,7 +74,7 @@ class Quit(Event):
     pass
 
 
-def main(
+def tjex(
     stdscr: curses.window,
     file: list[Path],
     command: str,
@@ -191,7 +191,7 @@ def main(
         time.sleep(0.01)
 
 
-def main_wrapper():
+def main():
     set_start_method("forkserver")
     parser = argparse.ArgumentParser()
     _ = parser.add_argument("file", type=Path, nargs="*")
@@ -200,7 +200,7 @@ def main_wrapper():
     _ = parser.add_argument("-w", "--max-cell-width", type=int, default=50)
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
-    tjex.logging.setup(args.logfile)
+    logging.setup(args.logfile)
 
     with ExitStack() as stack:
 
@@ -220,11 +220,11 @@ def main_wrapper():
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
         result = curses.wrapper(
-            main,  # pyright: ignore[reportUnknownArgumentType]
+            tjex,  # pyright: ignore[reportUnknownArgumentType]
             **vars(args),
         )
     return result
 
 
 if __name__ == "__main__":
-    exit(main_wrapper())
+    exit(main())
