@@ -29,8 +29,8 @@ from tjex.text_panel import TextEditPanel, TextPanel
 
 def append_history(jq_cmd: str):
     skip = False
-    cmd: list[str] = []
-    for arg in sys.argv:
+    cmd: list[str] = ["tjex"]
+    for arg in sys.argv[1:]:
         if skip:
             skip = False
         else:

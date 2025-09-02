@@ -22,3 +22,4 @@
 * Test copy through screen / tmux etc. (probably wont work)
 * Raw view
 * Documentation
+* Status messages for `add_to_history` and `copy`
