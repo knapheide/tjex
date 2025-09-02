@@ -1,0 +1,190 @@
+from __future__ import annotations
+
+import curses
+import re
+from base64 import b64encode
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+from typing import Self, override
+
+from tjex.curses_helper import WindowRegion
+from tjex.history import History
+from tjex.panel import KeyBindings, KeyPress, Panel
+from tjex.point import Point
+
+
+class TextPanel(Panel):
+    def __init__(self, window: WindowRegion, content: str):
+        self.window: WindowRegion = window
+        self.content: str = content
+
+    @override
+    def handle_key(self, key: KeyPress):
+        return [key]
+
+    @override
+    def draw(self):
+        for i, s in enumerate(self.content.splitlines()):
+            self.window.addstr(Point(i, 0), s)
+
+
+def osc52copy(s: str):
+    print("\033]52;c;{}\a".format(b64encode(s.encode()).decode()))
+
+
+@dataclass(frozen=True)
+class TextEditPanelState:
+    content: str
+    cursor: int = field(compare=False)
+
+
+class TextEditPanel(Panel):
+    bindings: KeyBindings[Self, None] = KeyBindings()
+    word_char_pattern: re.Pattern[str] = re.compile(r"[0-9a-zA-Z_-]")
+
+    def __init__(self, window: WindowRegion, content: str):
+        self.window: WindowRegion = window
+        self.content: str = content
+        self.cursor: int = len(content)
+        self.history: History[TextEditPanelState] = History(self.state)
+
+    def next_word(self):
+        next_cursor = self.cursor
+        while next_cursor < len(self.content) and not self.word_char_pattern.fullmatch(
+            self.content[next_cursor]
+        ):
+            next_cursor += 1
+        while next_cursor < len(self.content) and self.word_char_pattern.fullmatch(
+            self.content[next_cursor]
+        ):
+            next_cursor += 1
+        return next_cursor
+
+    def prev_word(self):
+        next_cursor = self.cursor - 1
+        while next_cursor >= 0 and not self.word_char_pattern.fullmatch(
+            self.content[next_cursor]
+        ):
+            next_cursor -= 1
+        while next_cursor >= 0 and self.word_char_pattern.fullmatch(
+            self.content[next_cursor]
+        ):
+            next_cursor -= 1
+        return next_cursor + 1
+
+    def delete(self, until: int):
+        until = max(0, min(until, len(self.content)))
+        self.update(
+            TextEditPanelState(
+                self.content[: min(self.cursor, until)]
+                + self.content[max(self.cursor, until) :],
+                min(until, self.cursor),
+            )
+        )
+
+    @bindings.add("\x1f")  # C-_
+    def undo(self):
+        self.set_state(self.history.pop(self.state))
+
+    @bindings.add("M-_")
+    def redo(self):
+        self.set_state(self.history.redo())
+
+    @bindings.add("M-w")
+    def copy(self):
+        osc52copy(self.content)
+
+    @bindings.add("\x0b")  # C-k
+    def kill_line(self):
+        self.delete(len(self.content))
+
+    @bindings.add("KEY_DC", "\x04")  # C-d
+    def delete_next_char(self):
+        self.delete(self.cursor + 1)
+
+    @bindings.add("M-KEY_DC", "M-d", "kDC5")  # C-<delete>
+    def delete_next_word(self):
+        self.delete(self.next_word())
+
+    @bindings.add("KEY_BACKSPACE")
+    def delete_prev_char(self):
+        self.delete(self.cursor - 1)
+
+    @bindings.add("M-KEY_BACKSPACE", "\x08")  # C-<backspace>
+    def delete_prev_word(self):
+        self.delete(self.prev_word())
+
+    @bindings.add("KEY_RIGHT", "\x06")  # C-f
+    def forward_char(self):
+        self.set_cursor(self.cursor + 1)
+
+    @bindings.add("M-KEY_RIGHT", "kRIT5", "M-f")  # C-<right>
+    def forward_word(self):
+        self.set_cursor(self.next_word())
+
+    @bindings.add("KEY_LEFT", "\x02")  # C-b
+    def backward_char(self):
+        self.set_cursor(max(self.cursor - 1, 0))
+
+    @bindings.add("M-KEY_LEFT", "kLFT5", "M-b")  # C-<left>
+    def backward_word(self):
+        self.set_cursor(self.prev_word())
+
+    @bindings.add("KEY_END", "\x05")  # C-e
+    def end(self):
+        self.set_cursor(len(self.content))
+
+    @bindings.add("KEY_HOME", "\x01")  # C-a
+    def home(self):
+        self.set_cursor(0)
+
+    @override
+    def handle_key(self, key: KeyPress) -> Iterable[KeyPress]:
+        match self.bindings.handle_key(key, self):
+            case None:
+                return ()
+            case KeyPress(key_str) if (
+                len(key_str) == 1 and key_str not in "\n" and key_str.isprintable()
+            ):
+                self.content = (
+                    self.content[: self.cursor] + key_str + self.content[self.cursor :]
+                )
+                self.set_cursor(self.cursor + 1)
+            case _:
+                return (key,)
+        return ()
+
+    def set_cursor(self, cursor: int):
+        self.cursor = max(0, min(len(self.content), cursor))
+        self.update_content_base()
+
+    def update_content_base(self):
+        if self.cursor < self.window.content_base.x:
+            self.window.content_base = Point(0, self.cursor)
+        if self.cursor >= self.window.content_base.x + self.window.width:
+            self.window.content_base = Point(0, self.cursor - self.window.width + 1)
+        if len(self.content) < self.window.content_base.x + self.window.width:
+            self.window.content_base = Point(
+                0, max(0, len(self.content) - self.window.width + 1)
+            )
+
+    @override
+    def draw(self):
+        self.window.addstr(Point(0, 0), self.content)
+        if self.active:
+            self.window.chgat(Point(0, self.cursor), 1, curses.A_REVERSE)
+
+    def update(self, state: str | TextEditPanelState):
+        if isinstance(state, str):
+            state = TextEditPanelState(state, len(state))
+        self.history.push(self.state)
+        self.set_state(state)
+        self.history.push(self.state)
+
+    @property
+    def state(self):
+        return TextEditPanelState(self.content, self.cursor)
+
+    def set_state(self, state: TextEditPanelState):
+        self.content = state.content
+        self.set_cursor(state.cursor)
