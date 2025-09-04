@@ -62,10 +62,10 @@ class WindowRegion:
     def width(self):
         return self.size.x
 
-    def addstr(self, pos: Point, s: str, attr: int = 0):
+    def insstr(self, pos: Point, s: str, attr: int = 0):
         absolute_pos = pos - self.content_base
         if self.height > absolute_pos.y >= 0 and self.width > absolute_pos.x > -len(s):
-            self.window.addstr(
+            self.window.insstr(
                 self.y + absolute_pos.y,
                 self.x + max(0, absolute_pos.x),
                 s[max(0, -absolute_pos.x) : self.width - absolute_pos.x],

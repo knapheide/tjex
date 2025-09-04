@@ -105,7 +105,7 @@ class EntryWidth:
                 s = entry.s
                 if len(s) > self.width:
                     s = s[: self.width - 1] + "…"
-                window.addstr(
+                window.insstr(
                     pos,
                     s,
                     entry.attr
@@ -115,13 +115,13 @@ class EntryWidth:
             case NumberEntry(v):
                 if isinstance(v, int) and integer_chars(v) <= self.integer_width:
                     if force_left:
-                        window.addstr(
+                        window.insstr(
                             pos,
                             str(v),
                             curses.color_pair(curses.COLOR_BLUE) | attr,
                         )
                     else:
-                        window.addstr(
+                        window.insstr(
                             pos,
                             f"{{:{self.integer_width}d}}".format(v),
                             curses.color_pair(curses.COLOR_BLUE) | attr,
@@ -135,7 +135,7 @@ class EntryWidth:
                             | attr,
                         )
                 elif self.fraction_width is None:
-                    window.addstr(
+                    window.insstr(
                         pos,
                         f"{{:.{min(FLOAT_PRECISION, self.width-6)}e}}".format(v),
                         curses.color_pair(curses.COLOR_BLUE) | attr,
@@ -145,7 +145,7 @@ class EntryWidth:
                         1,
                         min(self.fraction_width, FLOAT_PRECISION - integer_digits(v)),
                     )
-                    window.addstr(
+                    window.insstr(
                         pos,
                         f"{{:{self.integer_width + 1 + fraction_width}.{fraction_width}f}}".format(
                             v

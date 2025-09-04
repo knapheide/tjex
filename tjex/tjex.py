@@ -109,7 +109,7 @@ def tjex(
         prompt_head.window.pos = Point(screen_size.y - 3, 0)
         prompt_head.window.size = Point(1, 2)
         prompt.window.pos = Point(screen_size.y - 3, 2)
-        prompt.window.size = Point(1, screen_size.x)
+        prompt.window.size = Point(1, screen_size.x - 2)
         status.window.pos = Point(screen_size.y - 2, 0)
         status.window.size = Point(2, screen_size.x)
         for panel in panels:
@@ -179,15 +179,16 @@ def tjex(
             jq.update(prompt.content)
             redraw = True
             continue
-        if update_status():
-            redraw = True
-            continue
         if redraw:
             stdscr.clear()
             for panel in panels:
                 panel.draw()
             stdscr.refresh()
             redraw = False
+            continue
+        if update_status():
+            redraw = True
+            continue
         time.sleep(0.01)
 
 

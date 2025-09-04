@@ -25,7 +25,7 @@ class TextPanel(Panel):
     @override
     def draw(self):
         for i, s in enumerate(self.content.splitlines()):
-            self.window.addstr(Point(i, 0), s)
+            self.window.insstr(Point(i, 0), s)
 
 
 def osc52copy(s: str):
@@ -170,7 +170,7 @@ class TextEditPanel(Panel):
 
     @override
     def draw(self):
-        self.window.addstr(Point(0, 0), self.content)
+        self.window.insstr(Point(0, 0), self.content)
         if self.active:
             self.window.chgat(Point(0, self.cursor), 1, curses.A_REVERSE)
 
