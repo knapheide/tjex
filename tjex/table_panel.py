@@ -210,9 +210,15 @@ def to_table_entry(v: Json | Undefined) -> TableEntry:
 def to_dict(v: Json) -> dict[TableKey, TableEntry]:
     match v:
         case list():
-            return {i: to_table_entry(v) for i, v in enumerate(v)}
+            return {
+                Undefined(): to_table_entry(v),
+                **{i: to_table_entry(v) for i, v in enumerate(v)},
+            }
         case dict():
-            return {k: to_table_entry(v) for k, v in v.items()}
+            return {
+                Undefined(): to_table_entry(v),
+                **{k: to_table_entry(v) for k, v in v.items()},
+            }
         case _:
             return {Undefined(): to_table_entry(v)}
 
