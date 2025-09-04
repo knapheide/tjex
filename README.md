@@ -1,5 +1,33 @@
 # Tabular Json EXplorer
 
+Navigate through complex json files by interactively building up a [jq](https://jqlang.org) filter.
+
+![demo image](doc/demo.png)
+
+## Usage
+
+```shell
+tjex example.json
+```
+
+If no file is given, `tjex` will try to read json from stdin.
+You will start out at the prompt at the bottom of the table.
+Enter a `jq` filter and the table will immediately update to show its output.
+Use `M-o` to switch to interactive navigation through the table.
+
+## Installation
+
+### Requirements
+
+* [jq](https://jqlang.org) is required.
+* If [atuin](https://atuin.sh) is available, the current prompt can be appended to the history with `M-<return>`.
+
+### With pipx
+
+```shell
+pipx install git+https://github.com/knapheide/tjex.git
+```
+
 ## TODO
 * Separate persistent command history for TextEditPanel
 * Mini history just for the table view
