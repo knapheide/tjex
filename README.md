@@ -51,3 +51,4 @@ pipx install git+https://github.com/knapheide/tjex.git
 * Raw view
 * Documentation
 * Status messages for `add_to_history` and `copy`
+* Per-panel dirty flag
