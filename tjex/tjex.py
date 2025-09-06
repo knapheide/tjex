@@ -34,7 +34,6 @@ def append_history(jq_cmd: str):
         if skip:
             skip = False
         else:
-            skip = False
             if arg in {"-c", "--command"}:
                 skip = True
             elif arg.startswith("-c") or arg.startswith("--command"):
