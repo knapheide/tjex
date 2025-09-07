@@ -21,13 +21,13 @@ from tjex import logging
 from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
 from tjex.jq import Jq, JqResult
 from tjex.logging import logger
-from tjex.panel import Event, KeyBindings, KeyPress
+from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
 from tjex.table_panel import TablePanel, TableState
 from tjex.text_panel import TextEditPanel, TextPanel
 
 
-def append_history(jq_cmd: str):
+def append_history(jq_cmd: str) -> StatusUpdate:
     skip = False
     cmd: list[str] = ["tjex"]
     for arg in sys.argv[1:]:
@@ -53,6 +53,9 @@ def append_history(jq_cmd: str):
         capture_output=True,
     )
     logger.debug(f"{result.stdout=} {result.stderr=}")
+    if result.returncode:
+        return StatusUpdate(result.stderr.decode("utf8"))
+    return StatusUpdate("Added to atuin history.")
 
 
 selector_pattern = re.compile(
@@ -77,11 +80,13 @@ def tjex(
     stdscr: curses.window,
     file: list[Path],
     command: str,
-    max_cell_width: int = 50,
+    max_cell_width: int,
+    slurp: bool,
     **_,
 ) -> int:
     curses.curs_set(0)  # pyright: ignore[reportUnusedCallResult]
     setup_plain_colors()
+
     table = TablePanel(WindowRegion(stdscr), max_cell_width)
     prompt_head = TextEditPanel(
         WindowRegion(stdscr),
@@ -116,7 +121,7 @@ def tjex(
 
     resize()
 
-    jq = Jq(file)
+    jq = Jq(file, slurp)
     key_reader = KeyReader(stdscr)
 
     current_command: str = command
@@ -139,7 +144,7 @@ def tjex(
     prompt.set_active(True)
     jq.update(prompt.content)
 
-    bindings: KeyBindings[None, Quit | None] = KeyBindings()
+    bindings: KeyBindings[None, Event | None] = KeyBindings()
 
     @bindings.add("\x07")  # C-g
     def quit(_: None):  # pyright: ignore[reportUnusedFunction]
@@ -154,23 +159,25 @@ def tjex(
             active_cycle[-1].set_active(False)
             active_cycle[0].set_active(True)
 
-    _ = bindings.add("\x1f")(lambda _: prompt.undo())  # C-_
+    _ = bindings.add("\x1f", "ESC")(lambda _: prompt.undo())  # C-_
     _ = bindings.add("M-_")(lambda _: prompt.redo())
 
     @bindings.add("M-\n")
     def add_to_history(_: None):  # pyright: ignore[reportUnusedFunction]
-        append_history(prompt.content)
+        return append_history(prompt.content)
 
     redraw = True
 
     while True:
         if (key := key_reader.get()) is not None:
-            for action in active_cycle[0].handle_key(KeyPress(key)):
-                match bindings.handle_key(action, None):
+            for event in active_cycle[0].handle_key(KeyPress(key)):
+                match bindings.handle_key(event, None):
                     case Quit():
                         return 0
                     case TablePanel.Select(selector):
                         prompt.update(append_selector(prompt.content, selector))
+                    case StatusUpdate(msg):
+                        status.content = msg
                     case KeyPress("KEY_RESIZE"):
                         resize()
                     case _:
@@ -178,16 +185,15 @@ def tjex(
             jq.update(prompt.content)
             redraw = True
             continue
-        if redraw:
-            stdscr.clear()
+
+        if update_status() or redraw:
+            stdscr.erase()
             for panel in panels:
                 panel.draw()
             stdscr.refresh()
             redraw = False
             continue
-        if update_status():
-            redraw = True
-            continue
+
         time.sleep(0.01)
 
 
@@ -198,6 +204,7 @@ def main():
     _ = parser.add_argument("-c", "--command", default="")
     _ = parser.add_argument("--logfile", type=Path)
     _ = parser.add_argument("-w", "--max-cell-width", type=int, default=50)
+    _ = parser.add_argument("-s", "--slurp", action="store_true")
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
     logging.setup(args.logfile)

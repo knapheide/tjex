@@ -12,6 +12,11 @@ class Event(ABC):
     pass
 
 
+@dataclass
+class StatusUpdate(Event):
+    msg: str
+
+
 T = TypeVar("T")
 S = TypeVar("S")
 R = TypeVar("R")

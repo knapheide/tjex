@@ -22,16 +22,17 @@ class Jq:
     process: Process | None = None
     latest_status: JqResult = JqResult("...", None)
 
-    def __init__(self, file: list[Path]):
+    def __init__(self, file: list[Path], slurp: bool):
         # The default start_method "fork" breaks curses
         assert get_start_method() == "forkserver"
         self.file: list[Path] = file
+        self.extra_args: list[str] = ["--slurp"] if slurp or len(file) > 1 else []
 
     @staticmethod
-    def run(file: list[Path], command: str, result: Queue[JqResult]):
+    def run(command: list[str], result: Queue[JqResult]):
         try:
             res = sp.run(
-                ["jq", *(["-s"] if len(file) > 1 else []), command or ".", *file],
+                command,
                 capture_output=True,
             )
             if res.returncode == 0:
@@ -55,7 +56,11 @@ class Jq:
                 self.result.close()
             self.result = Queue()
             self.process = Process(
-                target=self.run, args=(self.file, command, self.result)
+                target=self.run,
+                args=(
+                    ["jq", *self.extra_args, command or ".", *self.file],
+                    self.result,
+                ),
             )
             self.process.start()
             self.command = command

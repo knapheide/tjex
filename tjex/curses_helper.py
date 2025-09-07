@@ -15,9 +15,10 @@ def setup_plain_colors():
 
 class KeyReader:
     def __init__(self, window: curses.window):
+        curses.set_escdelay(10)
         window.keypad(True)
         window.nodelay(True)
-        window.notimeout(True)
+        window.notimeout(False)
         self.window: curses.window = window
 
     def get(self) -> str | None:

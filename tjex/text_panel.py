@@ -9,7 +9,7 @@ from typing import Self, override
 
 from tjex.curses_helper import WindowRegion
 from tjex.history import History
-from tjex.panel import KeyBindings, KeyPress, Panel
+from tjex.panel import Event, KeyBindings, KeyPress, Panel, StatusUpdate
 from tjex.point import Point
 
 
@@ -39,7 +39,7 @@ class TextEditPanelState:
 
 
 class TextEditPanel(Panel):
-    bindings: KeyBindings[Self, None] = KeyBindings()
+    bindings: KeyBindings[Self, None | Event] = KeyBindings()
     word_char_pattern: re.Pattern[str] = re.compile(r"[0-9a-zA-Z_-]")
 
     def __init__(self, window: WindowRegion, content: str):
@@ -93,6 +93,7 @@ class TextEditPanel(Panel):
     @bindings.add("M-w")
     def copy(self):
         osc52copy(self.content)
+        return StatusUpdate("Copied.")
 
     @bindings.add("\x0b")  # C-k
     def kill_line(self):
@@ -139,7 +140,7 @@ class TextEditPanel(Panel):
         self.set_cursor(0)
 
     @override
-    def handle_key(self, key: KeyPress) -> Iterable[KeyPress]:
+    def handle_key(self, key: KeyPress) -> Iterable[Event]:
         match self.bindings.handle_key(key, self):
             case None:
                 return ()
@@ -150,8 +151,8 @@ class TextEditPanel(Panel):
                     self.content[: self.cursor] + key_str + self.content[self.cursor :]
                 )
                 self.set_cursor(self.cursor + 1)
-            case _:
-                return (key,)
+            case Event() as event:
+                return (event,)
         return ()
 
     def set_cursor(self, cursor: int):

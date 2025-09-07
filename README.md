@@ -50,5 +50,8 @@ pipx install git+https://github.com/knapheide/tjex.git
 * Test copy through screen / tmux etc. (probably wont work)
 * Raw view
 * Documentation
-* Status messages for `add_to_history` and `copy`
 * Per-panel dirty flag
+* Status message animation (for pending jq process)
+* Regression tests
+* Should i specify a build system?
+* nix flake
