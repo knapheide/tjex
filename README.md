@@ -55,3 +55,4 @@ pipx install git+https://github.com/knapheide/tjex.git
 * Regression tests
 * Should i specify a build system?
 * nix flake
+* Hotkey to copy current cell
