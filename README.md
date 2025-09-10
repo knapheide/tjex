@@ -57,3 +57,4 @@ pipx install git+https://github.com/knapheide/tjex.git
 * Should i specify a build system?
 * nix flake
 * Hotkey to copy current cell
+* Plain-text search in table
