@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from math import log10
 from typing import Self, override
 
+from tjex.config import config
 from tjex.curses_helper import WindowRegion
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
@@ -38,9 +39,6 @@ class StringEntry(TableEntry):
 @dataclass
 class NumberEntry(TableEntry):
     v: int | float
-
-
-FLOAT_PRECISION = 10
 
 
 def integer_digits(v: int | float):
@@ -75,7 +73,7 @@ class EntryWidth:
                         if v != 0.0:
                             fraction_width = max(
                                 fraction_width,
-                                FLOAT_PRECISION + integer_digits(v),
+                                config.float_precision + integer_digits(v),
                             )
                 case _:
                     pass
@@ -137,13 +135,13 @@ class EntryWidth:
                 elif self.fraction_width is None:
                     window.insstr(
                         pos,
-                        f"{{:.{min(FLOAT_PRECISION, self.width-6)}e}}".format(v),
+                        f"{{:.{min(config.float_precision, self.width-6)}e}}".format(v),
                         curses.color_pair(curses.COLOR_BLUE) | attr,
                     )
                 else:
                     fraction_width = max(
                         1,
-                        min(self.fraction_width, FLOAT_PRECISION - integer_digits(v)),
+                        min(self.fraction_width, config.float_precision - integer_digits(v)),
                     )
                     window.insstr(
                         pos,
@@ -257,9 +255,9 @@ class TableState:
 class TablePanel(Panel):
     bindings: KeyBindings[Self, Select | None] = KeyBindings()
 
-    def __init__(self, window: WindowRegion, max_cell_width: int):
+    def __init__(self, window: WindowRegion):
         self.window: WindowRegion = window
-        self._max_cell_width: int = max_cell_width
+        self._max_cell_width: int | None = None
         self.full_cell_width: bool = False
         self.content: TableContent = {}
         self.col_keys: list[TableKey] = []
@@ -294,7 +292,7 @@ class TablePanel(Panel):
     def max_cell_width(self):
         if self.full_cell_width:
             return None
-        return self._max_cell_width
+        return self._max_cell_width or config.max_cell_width
 
     def update(self, content: TableContent, state: TableState | None):
         self.content = content
@@ -529,12 +527,12 @@ class TablePanel(Panel):
 
     @bindings.add("+")
     def inc_width(self):
-        self._max_cell_width += 1
+        self._max_cell_width = (self._max_cell_width or config.max_cell_width) + 1
         self.update(self.content, self.state)
 
     @bindings.add("-")
     def dec_width(self):
-        self._max_cell_width -= 1
+        self._max_cell_width = (self._max_cell_width or config.max_cell_width) - 1
         self.update(self.content, self.state)
 
     @override

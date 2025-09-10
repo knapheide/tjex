@@ -20,6 +20,8 @@ from typing import Any
 import argcomplete
 
 from tjex import logging
+from tjex.config import config as loaded_config
+from tjex.config import load as load_config
 from tjex.curses_helper import KeyReader, WindowRegion, osc52copy, setup_plain_colors
 from tjex.jq import Jq, JqError, JqResult
 from tjex.logging import logger
@@ -82,14 +84,14 @@ def tjex(
     stdscr: curses.window,
     file: list[Path],
     command: str,
-    max_cell_width: int,
+    config: Path,
+    max_cell_width: int | None,
     slurp: bool,
-    **_,
 ) -> int:
     curses.curs_set(0)  # pyright: ignore[reportUnusedCallResult]
     setup_plain_colors()
 
-    table = TablePanel(WindowRegion(stdscr), max_cell_width)
+    table = TablePanel(WindowRegion(stdscr))
     prompt_head = TextEditPanel(
         WindowRegion(stdscr),
         "> ",
@@ -121,8 +123,6 @@ def tjex(
         for panel in panels:
             panel.resize()
 
-    resize()
-
     jq = Jq(file, slurp)
     key_reader = KeyReader(stdscr)
 
@@ -141,10 +141,6 @@ def tjex(
                 return True
             case _:
                 return False
-
-    active_cycle = [prompt, table]
-    prompt.set_active(True)
-    jq.update(prompt.content)
 
     bindings: KeyBindings[None, Event | None] = KeyBindings()
 
@@ -193,6 +189,17 @@ def tjex(
         except JqError as e:
             status.content = e.msg
 
+    load_config(
+        config, {"global": bindings, "prompt": prompt.bindings, "table": table.bindings}
+    )
+    if max_cell_width:
+        loaded_config.max_cell_width = max_cell_width
+
+    resize()
+    active_cycle = [prompt, table]
+    prompt.set_active(True)
+    jq.update(prompt.content)
+
     redraw = True
 
     while True:
@@ -229,8 +236,11 @@ def main():
     parser = argparse.ArgumentParser()
     _ = parser.add_argument("file", type=Path, nargs="*")
     _ = parser.add_argument("-c", "--command", default="")
+    _ = parser.add_argument(
+        "--config", type=Path, default=Path.home() / ".config" / "tjex" / "config.toml"
+    )
     _ = parser.add_argument("--logfile", type=Path)
-    _ = parser.add_argument("-w", "--max-cell-width", type=int, default=50)
+    _ = parser.add_argument("-w", "--max-cell-width", type=int)
     _ = parser.add_argument("-s", "--slurp", action="store_true")
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
@@ -254,8 +264,8 @@ def main():
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
         result = curses.wrapper(
-            tjex,  # pyright: ignore[reportUnknownArgumentType]
-            **vars(args),
+            tjex,
+            **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
         )
     return result
 
