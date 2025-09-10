@@ -19,7 +19,8 @@ Use `M-o` to switch to interactive navigation through the table.
 
 ### Requirements
 
-* [jq](https://jqlang.org) is required.
+* [python](https://www.python.org) __≥3.12__
+* [jq](https://jqlang.org) __≥1.7__
 * If [atuin](https://atuin.sh) is available, the current prompt can be appended to the history with `M-<return>`.
 
 ### With pipx
