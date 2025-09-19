@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from multiprocessing import set_start_method
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Any
 
 import argcomplete
 
@@ -24,7 +25,7 @@ from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
 from tjex.table_panel import TablePanel, TableState
-from tjex.text_panel import TextEditPanel, TextPanel
+from tjex.text_panel import TextEditPanel, TextPanel, osc52copy
 
 
 def append_history(jq_cmd: str) -> StatusUpdate:
@@ -146,7 +147,7 @@ def tjex(
 
     bindings: KeyBindings[None, Event | None] = KeyBindings()
 
-    @bindings.add("\x07")  # C-g
+    @bindings.add("\x07", "\x04")  # C-g, C-d
     def quit(_: None):  # pyright: ignore[reportUnusedFunction]
         return Quit()
 
@@ -165,6 +166,10 @@ def tjex(
     @bindings.add("M-\n")
     def add_to_history(_: None):  # pyright: ignore[reportUnusedFunction]
         return append_history(prompt.content)
+
+    @table.bindings.add("M-w")
+    def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
+        osc52copy(jq.run_plain())
 
     redraw = True
 
