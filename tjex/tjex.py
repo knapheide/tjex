@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import curses
+import json
 import os
 import re
 import shlex
@@ -20,7 +21,7 @@ import argcomplete
 
 from tjex import logging
 from tjex.curses_helper import KeyReader, WindowRegion, osc52copy, setup_plain_colors
-from tjex.jq import Jq, JqResult
+from tjex.jq import Jq, JqError, JqResult
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
@@ -169,13 +170,28 @@ def tjex(
 
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
-        osc52copy(jq.run_plain())
+        try:
+            osc52copy(json.dumps(jq.run_plain()))
+            status.content = "Copied."
+        except JqError as e:
+            status.content = e.msg
 
     @table.bindings.add("w")
     def copy_cell_content(_: Any):  # pyright: ignore[reportUnusedFunction]
-        osc52copy(
-            jq.run_plain(append_selector(jq.command or ".", table.cell_selector or ""))
-        )
+        """Copy content of the current cell to clipboard.
+
+        If content is a string, copy the plain value, not the json representation."""
+        try:
+            content = jq.run_plain(
+                append_selector(jq.command or ".", table.cell_selector or "")
+            )
+            if isinstance(content, str):
+                osc52copy(content)
+            else:
+                osc52copy(json.dumps(content))
+            status.content = "Copied."
+        except JqError as e:
+            status.content = e.msg
 
     redraw = True
 

@@ -16,6 +16,12 @@ class JqResult:
     content: TableContent | None
 
 
+class JqError(Exception):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+        self.msg: str = msg
+
+
 class Jq:
     command: str | None = None
     result: Queue[JqResult] | None = None
@@ -80,11 +86,13 @@ class Jq:
             self.latest_status = JqResult("...", None)
         return self.latest_status
 
-    def run_plain(self, command: str | None = None) -> str:
+    def run_plain(self, command: str | None = None) -> Json:
         if command is None:
             command = self.command
         res = sp.run(
             ["jq", *self.extra_args, command or ".", *self.file],
             capture_output=True,
         )
-        return res.stdout.decode("utf8").strip()
+        if res.returncode != 0:
+            raise JqError(res.stderr.decode("utf8"))
+        return json.loads(res.stdout.decode("utf8"))
