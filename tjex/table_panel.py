@@ -475,14 +475,20 @@ class TablePanel(Panel):
     def right(self):
         self.cursor += Point(0, 1)
 
-    @bindings.add("\n")
-    def enter_cell(self):
+    @property
+    def cell_selector(self):
         try:
-            return self.Select(
-                key_to_selector(self.row_keys[self.cursor.y])
-                + key_to_selector(self.col_keys[self.cursor.x])
+            return key_to_selector(self.row_keys[self.cursor.y]) + key_to_selector(
+                self.col_keys[self.cursor.x]
             )
         except KeyError:
+            return None
+
+    @bindings.add("\n")
+    def enter_cell(self):
+        if (selector := self.cell_selector) is not None:
+            return self.Select(selector)
+        else:
             pass
 
     @bindings.add("M-\n")

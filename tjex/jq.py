@@ -80,9 +80,11 @@ class Jq:
             self.latest_status = JqResult("...", None)
         return self.latest_status
 
-    def run_plain(self) -> str:
+    def run_plain(self, command: str | None = None) -> str:
+        if command is None:
+            command = self.command
         res = sp.run(
-            ["jq", *self.extra_args, self.command or ".", *self.file],
+            ["jq", *self.extra_args, command or ".", *self.file],
             capture_output=True,
         )
-        return res.stdout.decode("utf8")
+        return res.stdout.decode("utf8").strip()

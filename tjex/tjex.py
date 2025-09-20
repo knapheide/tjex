@@ -19,13 +19,13 @@ from typing import Any
 import argcomplete
 
 from tjex import logging
-from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
+from tjex.curses_helper import KeyReader, WindowRegion, osc52copy, setup_plain_colors
 from tjex.jq import Jq, JqResult
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
 from tjex.table_panel import TablePanel, TableState
-from tjex.text_panel import TextEditPanel, TextPanel, osc52copy
+from tjex.text_panel import TextEditPanel, TextPanel
 
 
 def append_history(jq_cmd: str) -> StatusUpdate:
@@ -170,6 +170,12 @@ def tjex(
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         osc52copy(jq.run_plain())
+
+    @table.bindings.add("w")
+    def copy_cell_content(_: Any):  # pyright: ignore[reportUnusedFunction]
+        osc52copy(
+            jq.run_plain(append_selector(jq.command or ".", table.cell_selector or ""))
+        )
 
     redraw = True
 

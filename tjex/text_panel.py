@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import curses
 import re
-from base64 import b64encode
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Self, override
 
-from tjex.curses_helper import WindowRegion
+from tjex.curses_helper import WindowRegion, osc52copy
 from tjex.history import History
 from tjex.panel import Event, KeyBindings, KeyPress, Panel, StatusUpdate
 from tjex.point import Point
@@ -26,10 +25,6 @@ class TextPanel(Panel):
     def draw(self):
         for i, s in enumerate(self.content.splitlines()):
             self.window.insstr(Point(i, 0), s)
-
-
-def osc52copy(s: str):
-    print("\033]52;c;{}\a".format(b64encode(s.encode()).decode()))
 
 
 @dataclass(frozen=True)
