@@ -175,8 +175,8 @@ def tjex(
     @table.bindings.add("w")
     def copy_cell_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Copy content of the current cell to clipboard.
-
-        If content is a string, copy the plain value, not the json representation."""
+        If content is a string, copy the plain value, not the json representation.
+        """
         try:
             content = jq.run_plain(
                 append_selector(jq.command or ".", table.cell_selector or "")
