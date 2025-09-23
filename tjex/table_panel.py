@@ -141,7 +141,10 @@ class EntryWidth:
                 else:
                     fraction_width = max(
                         1,
-                        min(self.fraction_width, config.float_precision - integer_digits(v)),
+                        min(
+                            self.fraction_width,
+                            config.float_precision - integer_digits(v),
+                        ),
                     )
                     window.insstr(
                         pos,
@@ -292,6 +295,7 @@ class TablePanel(Panel):
     def max_cell_width(self):
         if self.full_cell_width:
             return None
+        logger.debug((self._max_cell_width, config.max_cell_width))
         return self._max_cell_width or config.max_cell_width
 
     def update(self, content: TableContent, state: TableState | None):
@@ -457,19 +461,19 @@ class TablePanel(Panel):
             self.content_window.content_base, y=0
         )
 
-    @bindings.add("KEY_UP", "\x10")  # C-p
+    @bindings.add("KEY_UP", "p", "\x10")  # C-p
     def up(self):
         self.cursor += Point(-1, 0)
 
-    @bindings.add("KEY_DOWN", "\x0e")  # C-n
+    @bindings.add("KEY_DOWN", "n", "\x0e")  # C-n
     def down(self):
         self.cursor += Point(1, 0)
 
-    @bindings.add("KEY_LEFT", "\x02")  # C-b
+    @bindings.add("KEY_LEFT", "b", "\x02")  # C-b
     def left(self):
         self.cursor += Point(0, -1)
 
-    @bindings.add("KEY_RIGHT", "\x06")  # C-f
+    @bindings.add("KEY_RIGHT", "f", "\x06")  # C-f
     def right(self):
         self.cursor += Point(0, 1)
 

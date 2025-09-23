@@ -27,21 +27,31 @@ class KeyPress(Event):
     key: str
 
 
+@dataclass
+class Function(Generic[T, S]):
+    f: Callable[[T], S]
+    name: str
+    description: str | None
+
+
 class KeyBindings(Generic[T, S]):
     def __init__(self):
-        self.bindings: dict[str, Callable[[T], S]] = {}
+        self.functions: list[Function[T, S]] = []
+        self.bindings: dict[str, Function[T, S]] = {}
 
-    def add(self, *key: str):
+    def add(self, *key: str, name: str | None = None):
         def wrap(f: Callable[[T], S]) -> Callable[[T], S]:
+            func = Function(f, f.__name__ if name is None else name, f.__doc__)
+            self.functions.append(func)
             for k in key:
-                self.bindings[k] = f
+                self.bindings[k] = func
             return f
 
         return wrap
 
     def handle_key(self, key: KeyPress | R, p: T) -> KeyPress | R | S:
         if isinstance(key, KeyPress) and key.key in self.bindings:
-            return self.bindings[key.key](p)
+            return self.bindings[key.key].f(p)
         return key
 
 

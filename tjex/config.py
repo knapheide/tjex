@@ -1,9 +1,9 @@
+import json
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from tjex.logging import logger
 from tjex.panel import KeyBindings
 
 
@@ -17,14 +17,51 @@ class Config:
 config: Config = Config()
 
 
+def comment_out(s: str):
+    return "".join(f"# {l}\n" if l else "\n" for l in s.splitlines())
+
+
+def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
+    res = "# Example configuration for tjex"
+
+    for k, v in asdict(config).items():
+        if k != "bindings":
+            res += "\n\n"
+            res += f"{json.dumps(k)} = {json.dumps(v)}"
+
+    for panel, b in bindings.items():
+        res += f"\n\n"
+        res += f"[bindings.{panel}]"
+        for f in b.functions:
+            res += f"\n"
+            res += comment_out(f.name)
+            if f.description is not None:
+                res += comment_out(f.description)
+            for k, v in b.bindings.items():
+                if v == f:
+                    res += f"{json.dumps(k)} = {json.dumps(f.name)}\n"
+
+    return comment_out(res)
+
+
+def apply_bindings(bindings: dict[str, KeyBindings[Any, Any]]):
+    for panel, b in config.bindings.items():
+        for k, f in b.items():
+            bindings[panel].bindings[k] = next(
+                _f for _f in bindings[panel].functions if _f.name == f
+            )
+
+
 def load(
     config_file: Path,
     bindings: dict[str, KeyBindings[Any, Any]],
 ) -> None:
-    global config
     if config_file.exists():
         with open(config_file, "rb") as f:
-            config = Config(**tomllib.load(f))
+            for k, v in tomllib.load(f).items():
+                setattr(config, k, v)
+        apply_bindings(bindings)
     else:
-        logger.debug(bindings)
-        pass  # TODO
+        config_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_file, "w") as f:
+            _ = f.write(make_example_config(bindings))
