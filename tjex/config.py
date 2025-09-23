@@ -4,7 +4,8 @@ import tomllib
 from base64 import b64encode
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from textwrap import dedent
+from typing import Any, TypeVar
 
 from tjex.panel import KeyBindings
 from tjex.utils import TjexError
@@ -14,21 +15,32 @@ class ConfigError(TjexError):
     pass
 
 
+T = TypeVar("T")
+
+
+def config_field(default: T, doc: str) -> T:
+    return field(default=default, metadata={"doc": dedent(doc).strip()})
+
+
 @dataclass
 class Config:
     bindings: dict[str, dict[str, str]] = field(default_factory=dict)
-    float_precision: int = 8
-    max_cell_width: int = 50
-
-    # Bash command to copy a string from stdin to the clipboard
-    # e.g.
-    # * `osc` (https://github.com/theimpostor/osc)
-    # * `wl-copy 2> /dev/null`
-    #   (It's important to pipe stderr to null, because `wl-copy` will stick around and make tjex
-    #    hang otherwise)
-    # By default, tjex just emits the plain OCS52 escape sequence.
-    # In many setups, this wont work though.
-    copy_command: str | None = None
+    float_precision: int = config_field(
+        8, "Number of significand digits for floating point numbers"
+    )
+    max_cell_width: int = config_field(50, "Default maximum cell width")
+    copy_command: str | None = config_field(
+        None,
+        """
+        Bash command to copy a string from stdin to the clipboard
+        e.g.
+        * "osc" (https://github.com/theimpostor/osc)
+        * "wl-copy 2> /dev/null"
+          (It's important to pipe stderr to null, because `wl-copy` will stick around and make tjex hang otherwise)
+        By default, tjex just emits the plain OCS52 escape sequence.
+        In many setups, this wont work though.
+        """,
+    )
 
     def do_copy(self, s: str):
         if self.copy_command is None:
@@ -57,6 +69,8 @@ def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
     for k, v in asdict(config).items():
         if k != "bindings":
             res += "\n\n"
+            if doc := config.__dataclass_fields__[k].metadata.get("doc"):
+                res += comment_out(doc)
             res += f"{json.dumps(k)} = {json.dumps(v)}"
 
     for panel, b in bindings.items():

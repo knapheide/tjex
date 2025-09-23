@@ -57,7 +57,6 @@ def append_history(jq_cmd: str) -> StatusUpdate:
         ],
         capture_output=True,
     )
-    logger.debug(f"{result.stdout=} {result.stderr=}")
     if result.returncode:
         return StatusUpdate(result.stderr.decode("utf8"))
     return StatusUpdate("Added to atuin history.")

@@ -11,7 +11,6 @@ from typing import Self, override
 
 from tjex.config import config
 from tjex.curses_helper import WindowRegion
-from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
 from tjex.point import Point
 
@@ -295,7 +294,6 @@ class TablePanel(Panel):
     def max_cell_width(self):
         if self.full_cell_width:
             return None
-        logger.debug((self._max_cell_width, config.max_cell_width))
         return self._max_cell_width or config.max_cell_width
 
     def update(self, content: TableContent, state: TableState | None):
@@ -332,7 +330,6 @@ class TablePanel(Panel):
             1,
             self.row_header_width.width + 1,
         )
-        logger.debug(f"{self.content_offset=}")
         self.resize()
         if state is not None:
             self.cursor = state.cursor
