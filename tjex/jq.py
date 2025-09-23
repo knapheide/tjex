@@ -8,6 +8,7 @@ from pathlib import Path
 from queue import Empty
 
 from tjex.table_panel import Json, TableContent, to_table_content
+from tjex.utils import TjexError
 
 
 @dataclass
@@ -16,10 +17,8 @@ class JqResult:
     content: TableContent | None
 
 
-class JqError(Exception):
-    def __init__(self, msg: str):
-        super().__init__(msg)
-        self.msg: str = msg
+class JqError(TjexError):
+    pass
 
 
 class Jq:

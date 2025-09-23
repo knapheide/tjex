@@ -22,13 +22,14 @@ import argcomplete
 from tjex import logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
-from tjex.curses_helper import KeyReader, WindowRegion, osc52copy, setup_plain_colors
-from tjex.jq import Jq, JqError, JqResult
+from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
+from tjex.jq import Jq, JqResult
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
 from tjex.table_panel import TablePanel, TableState
 from tjex.text_panel import TextEditPanel, TextPanel
+from tjex.utils import TjexError
 
 
 def append_history(jq_cmd: str) -> StatusUpdate:
@@ -167,9 +168,9 @@ def tjex(
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         try:
-            osc52copy(json.dumps(jq.run_plain()))
+            loaded_config.do_copy(json.dumps(jq.run_plain()))
             status.content = "Copied."
-        except JqError as e:
+        except TjexError as e:
             status.content = e.msg
 
     @table.bindings.add("w")
@@ -182,11 +183,11 @@ def tjex(
                 append_selector(jq.command or ".", table.cell_selector or "")
             )
             if isinstance(content, str):
-                osc52copy(content)
+                loaded_config.do_copy(content)
             else:
-                osc52copy(json.dumps(content))
+                loaded_config.do_copy(json.dumps(content))
             status.content = "Copied."
-        except JqError as e:
+        except TjexError as e:
             status.content = e.msg
 
     load_config(

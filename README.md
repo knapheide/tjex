@@ -44,10 +44,7 @@ pipx install git+https://github.com/knapheide/tjex.git
 * Kill ring for TextEditPanel
 * Transpose `TablePanel` (without changing the underlying data)
 * Configurable number formatting
-* Config file
-  * key bindings
-  * history append command
-  * copy command
+* Configurable history append command
 * Test copy through screen / tmux etc. (probably wont work)
 * Raw view
 * Documentation
@@ -58,3 +55,4 @@ pipx install git+https://github.com/knapheide/tjex.git
 * nix flake
 * Hotkey to copy current cell
 * Plain-text search in table
+* Key binding aliases
