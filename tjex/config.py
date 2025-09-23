@@ -7,6 +7,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Any, TypeVar
 
+from tjex.curses_helper import KEY_ALIASES
 from tjex.panel import KeyBindings
 from tjex.utils import TjexError
 
@@ -80,6 +81,7 @@ def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
             else:
                 res += f"{json.dumps(k)} = {json.dumps(v)}"
 
+    reverse_aliases = {v: k for k, v in KEY_ALIASES.items()}
     for panel, b in bindings.items():
         res += f"\n\n"
         res += f"[bindings.{panel}]"
@@ -90,7 +92,7 @@ def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
                 res += comment_out(f.description)
             for k, v in b.bindings.items():
                 if v == f:
-                    res += f"{json.dumps(k)} = {json.dumps(f.name)}\n"
+                    res += f"{json.dumps(reverse_aliases.get(k, k))} = {json.dumps(f.name)}\n"
 
     return comment_out(res)
 
@@ -98,7 +100,7 @@ def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
 def apply_bindings(bindings: dict[str, KeyBindings[Any, Any]]):
     for panel, b in config.bindings.items():
         for k, f in b.items():
-            bindings[panel].bindings[k] = next(
+            bindings[panel].bindings[KEY_ALIASES.get(k, k)] = next(
                 _f for _f in bindings[panel].functions if _f.name == f
             )
 

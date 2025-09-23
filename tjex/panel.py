@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Callable, Generic, TypeVar
 
-from tjex.curses_helper import WindowRegion
+from tjex.curses_helper import KEY_ALIASES, WindowRegion
 
 
 class Event(ABC):
@@ -44,7 +44,7 @@ class KeyBindings(Generic[T, S]):
             func = Function(f, f.__name__ if name is None else name, f.__doc__)
             self.functions.append(func)
             for k in key:
-                self.bindings[k] = func
+                self.bindings[KEY_ALIASES.get(k, k)] = func
             return f
 
         return wrap
