@@ -53,7 +53,7 @@ def append_history(jq_cmd: str) -> StatusUpdate:
         [
             "bash",
             "-c",
-            f"atuin history end --exit 0 -- $(atuin history start -- {shlex.quote(cmd_str)})",
+            loaded_config.append_history_command.format(shlex.quote(cmd_str)),
         ],
         capture_output=True,
     )

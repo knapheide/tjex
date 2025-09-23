@@ -38,8 +38,12 @@ class Config:
         * "wl-copy 2> /dev/null"
           (It's important to pipe stderr to null, because `wl-copy` will stick around and make tjex hang otherwise)
         By default, tjex just emits the plain OCS52 escape sequence.
-        In many setups, this wont work though.
+        For many setups, this wont work though.
         """,
+    )
+    append_history_command: str = config_field(
+        "atuin history end --exit 0 -- $(atuin history start -- {})",
+        "Format string that generates a bash command to append the given string to a shell history",
     )
 
     def do_copy(self, s: str):
