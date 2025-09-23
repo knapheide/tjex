@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from base64 import b64encode
 import curses
 from dataclasses import dataclass
 
 from tjex.logging import logger
 from tjex.point import Point
-
-
-def osc52copy(s: str):
-    print("\033]52;c;{}\a".format(b64encode(s.encode()).decode()))
 
 
 def setup_plain_colors():

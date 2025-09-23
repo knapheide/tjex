@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Generic, TypeVar
 
-from tjex.logging import logger
-
 T = TypeVar("T")
 
 
@@ -23,7 +21,6 @@ class History(Generic[T]):
         if self.current != v:
             self.history = [*self.history[: self.position + 1], v]
             self.position += 1
-        logger.debug(("push", self.history, self.position))
 
     def pop(self, current: T):
         if current != self.current:

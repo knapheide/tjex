@@ -6,7 +6,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Self, override
 
-from tjex.curses_helper import WindowRegion, osc52copy
+from tjex.config import config
+from tjex.curses_helper import WindowRegion
 from tjex.history import History
 from tjex.panel import Event, KeyBindings, KeyPress, Panel, StatusUpdate
 from tjex.point import Point
@@ -87,11 +88,13 @@ class TextEditPanel(Panel):
 
     @bindings.add("M-w")
     def copy(self):
-        osc52copy(self.content)
+        """Copy current prompt to clipboard"""
+        config.do_copy(self.content)
         return StatusUpdate("Copied.")
 
     @bindings.add("\x0b")  # C-k
     def kill_line(self):
+        """Delete everything to the right of the cursor"""
         self.delete(len(self.content))
 
     @bindings.add("KEY_DC", "\x04")  # C-d

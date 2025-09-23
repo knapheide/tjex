@@ -20,13 +20,16 @@ from typing import Any
 import argcomplete
 
 from tjex import logging
-from tjex.curses_helper import KeyReader, WindowRegion, osc52copy, setup_plain_colors
-from tjex.jq import Jq, JqError, JqResult
+from tjex.config import config as loaded_config
+from tjex.config import load as load_config
+from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
+from tjex.jq import Jq, JqResult
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
 from tjex.table_panel import TablePanel, TableState
 from tjex.text_panel import TextEditPanel, TextPanel
+from tjex.utils import TjexError
 
 
 def append_history(jq_cmd: str) -> StatusUpdate:
@@ -50,11 +53,10 @@ def append_history(jq_cmd: str) -> StatusUpdate:
         [
             "bash",
             "-c",
-            f"atuin history end --exit 0 -- $(atuin history start -- {shlex.quote(cmd_str)})",
+            loaded_config.append_history_command.format(shlex.quote(cmd_str)),
         ],
         capture_output=True,
     )
-    logger.debug(f"{result.stdout=} {result.stderr=}")
     if result.returncode:
         return StatusUpdate(result.stderr.decode("utf8"))
     return StatusUpdate("Added to atuin history.")
@@ -82,14 +84,14 @@ def tjex(
     stdscr: curses.window,
     file: list[Path],
     command: str,
-    max_cell_width: int,
+    config: Path,
+    max_cell_width: int | None,
     slurp: bool,
-    **_,
 ) -> int:
     curses.curs_set(0)  # pyright: ignore[reportUnusedCallResult]
     setup_plain_colors()
 
-    table = TablePanel(WindowRegion(stdscr), max_cell_width)
+    table = TablePanel(WindowRegion(stdscr))
     prompt_head = TextEditPanel(
         WindowRegion(stdscr),
         "> ",
@@ -121,8 +123,6 @@ def tjex(
         for panel in panels:
             panel.resize()
 
-    resize()
-
     jq = Jq(file, slurp)
     key_reader = KeyReader(stdscr)
 
@@ -142,10 +142,6 @@ def tjex(
             case _:
                 return False
 
-    active_cycle = [prompt, table]
-    prompt.set_active(True)
-    jq.update(prompt.content)
-
     bindings: KeyBindings[None, Event | None] = KeyBindings()
 
     @bindings.add("\x07", "\x04")  # C-g, C-d
@@ -154,6 +150,7 @@ def tjex(
 
     @bindings.add("M-o", "\x0f")  # C-o
     def toggle_active(_: None):  # pyright: ignore[reportUnusedFunction]
+        """Toggle active panel between prompt and table"""
         if active_cycle[0] == prompt:
             update_status(block=True)  # pyright: ignore[reportUnusedCallResult]
         if active_cycle[0] != prompt or jq.latest_status.content is not None:
@@ -161,37 +158,50 @@ def tjex(
             active_cycle[-1].set_active(False)
             active_cycle[0].set_active(True)
 
-    _ = bindings.add("\x1f", "ESC")(lambda _: prompt.undo())  # C-_
-    _ = bindings.add("M-_")(lambda _: prompt.redo())
+    _ = bindings.add("\x1f", "ESC", name="undo")(lambda _: prompt.undo())  # C-_
+    _ = bindings.add("M-_", name="redo")(lambda _: prompt.redo())
 
     @bindings.add("M-\n")
     def add_to_history(_: None):  # pyright: ignore[reportUnusedFunction]
+        """Append tjex call with current command to shell's history"""
         return append_history(prompt.content)
 
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Copy output of current command to clipboard"""
         try:
-            osc52copy(json.dumps(jq.run_plain()))
+            loaded_config.do_copy(json.dumps(jq.run_plain()))
             status.content = "Copied."
-        except JqError as e:
+        except TjexError as e:
             status.content = e.msg
 
     @table.bindings.add("w")
     def copy_cell_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Copy content of the current cell to clipboard.
-
-        If content is a string, copy the plain value, not the json representation."""
+        If content is a string, copy the plain value, not the json representation.
+        """
         try:
             content = jq.run_plain(
                 append_selector(jq.command or ".", table.cell_selector or "")
             )
             if isinstance(content, str):
-                osc52copy(content)
+                loaded_config.do_copy(content)
             else:
-                osc52copy(json.dumps(content))
+                loaded_config.do_copy(json.dumps(content))
             status.content = "Copied."
-        except JqError as e:
+        except TjexError as e:
             status.content = e.msg
+
+    load_config(
+        config, {"global": bindings, "prompt": prompt.bindings, "table": table.bindings}
+    )
+    if max_cell_width:
+        loaded_config.max_cell_width = max_cell_width
+
+    resize()
+    active_cycle = [prompt, table]
+    prompt.set_active(True)
+    jq.update(prompt.content)
 
     redraw = True
 
@@ -229,8 +239,11 @@ def main():
     parser = argparse.ArgumentParser()
     _ = parser.add_argument("file", type=Path, nargs="*")
     _ = parser.add_argument("-c", "--command", default="")
+    _ = parser.add_argument(
+        "--config", type=Path, default=Path.home() / ".config" / "tjex" / "config.toml"
+    )
     _ = parser.add_argument("--logfile", type=Path)
-    _ = parser.add_argument("-w", "--max-cell-width", type=int, default=50)
+    _ = parser.add_argument("-w", "--max-cell-width", type=int)
     _ = parser.add_argument("-s", "--slurp", action="store_true")
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
@@ -254,8 +267,8 @@ def main():
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
         result = curses.wrapper(
-            tjex,  # pyright: ignore[reportUnknownArgumentType]
-            **vars(args),
+            tjex,
+            **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
         )
     return result
 

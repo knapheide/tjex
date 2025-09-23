@@ -9,8 +9,8 @@ from dataclasses import dataclass, replace
 from math import log10
 from typing import Self, override
 
+from tjex.config import config
 from tjex.curses_helper import WindowRegion
-from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
 from tjex.point import Point
 
@@ -38,9 +38,6 @@ class StringEntry(TableEntry):
 @dataclass
 class NumberEntry(TableEntry):
     v: int | float
-
-
-FLOAT_PRECISION = 10
 
 
 def integer_digits(v: int | float):
@@ -75,7 +72,7 @@ class EntryWidth:
                         if v != 0.0:
                             fraction_width = max(
                                 fraction_width,
-                                FLOAT_PRECISION + integer_digits(v),
+                                config.float_precision + integer_digits(v),
                             )
                 case _:
                     pass
@@ -137,13 +134,16 @@ class EntryWidth:
                 elif self.fraction_width is None:
                     window.insstr(
                         pos,
-                        f"{{:.{min(FLOAT_PRECISION, self.width-6)}e}}".format(v),
+                        f"{{:.{min(config.float_precision, self.width-6)}e}}".format(v),
                         curses.color_pair(curses.COLOR_BLUE) | attr,
                     )
                 else:
                     fraction_width = max(
                         1,
-                        min(self.fraction_width, FLOAT_PRECISION - integer_digits(v)),
+                        min(
+                            self.fraction_width,
+                            config.float_precision - integer_digits(v),
+                        ),
                     )
                     window.insstr(
                         pos,
@@ -257,9 +257,9 @@ class TableState:
 class TablePanel(Panel):
     bindings: KeyBindings[Self, Select | None] = KeyBindings()
 
-    def __init__(self, window: WindowRegion, max_cell_width: int):
+    def __init__(self, window: WindowRegion):
         self.window: WindowRegion = window
-        self._max_cell_width: int = max_cell_width
+        self._max_cell_width: int | None = None
         self.full_cell_width: bool = False
         self.content: TableContent = {}
         self.col_keys: list[TableKey] = []
@@ -294,7 +294,7 @@ class TablePanel(Panel):
     def max_cell_width(self):
         if self.full_cell_width:
             return None
-        return self._max_cell_width
+        return self._max_cell_width or config.max_cell_width
 
     def update(self, content: TableContent, state: TableState | None):
         self.content = content
@@ -330,7 +330,6 @@ class TablePanel(Panel):
             1,
             self.row_header_width.width + 1,
         )
-        logger.debug(f"{self.content_offset=}")
         self.resize()
         if state is not None:
             self.cursor = state.cursor
@@ -459,19 +458,19 @@ class TablePanel(Panel):
             self.content_window.content_base, y=0
         )
 
-    @bindings.add("KEY_UP", "\x10")  # C-p
+    @bindings.add("KEY_UP", "p", "\x10")  # C-p
     def up(self):
         self.cursor += Point(-1, 0)
 
-    @bindings.add("KEY_DOWN", "\x0e")  # C-n
+    @bindings.add("KEY_DOWN", "n", "\x0e")  # C-n
     def down(self):
         self.cursor += Point(1, 0)
 
-    @bindings.add("KEY_LEFT", "\x02")  # C-b
+    @bindings.add("KEY_LEFT", "b", "\x02")  # C-b
     def left(self):
         self.cursor += Point(0, -1)
 
-    @bindings.add("KEY_RIGHT", "\x06")  # C-f
+    @bindings.add("KEY_RIGHT", "f", "\x06")  # C-f
     def right(self):
         self.cursor += Point(0, 1)
 
@@ -486,6 +485,7 @@ class TablePanel(Panel):
 
     @bindings.add("\n")
     def enter_cell(self):
+        """Enter highlighted cell by appending selector to jq prompt"""
         if (selector := self.cell_selector) is not None:
             return self.Select(selector)
         else:
@@ -493,6 +493,7 @@ class TablePanel(Panel):
 
     @bindings.add("M-\n")
     def enter_row(self):
+        """Enter highlighted cell's row by appending selector to jq prompt"""
         try:
             return self.Select(key_to_selector(self.row_keys[self.cursor.y]))
         except KeyError:
@@ -500,10 +501,12 @@ class TablePanel(Panel):
 
     @bindings.add("M-<")
     def first_row(self):
+        """Jump to first row"""
         self.cursor = replace(self.cursor, y=0)
 
     @bindings.add("M->")
     def last_row(self):
+        """Jump to last row"""
         self.cursor = replace(self.cursor, y=len(self.row_keys) - 1)
 
     @bindings.add("KEY_NPAGE")
@@ -516,25 +519,30 @@ class TablePanel(Panel):
 
     @bindings.add("KEY_END", "\x05")  # C-e
     def last_col(self):
+        """Jump to last column"""
         self.cursor = replace(self.cursor, x=len(self.col_keys) - 1)
 
     @bindings.add("KEY_HOME", "\x01")  # C-a
     def first_col(self):
+        """Jump to first column"""
         self.cursor = replace(self.cursor, x=0)
 
     @bindings.add("l")
     def full_width(self):
+        """Toggle: rendering all cells with their full width vs. max_cell_width"""
         self.full_cell_width = not self.full_cell_width
         self.update(self.content, self.state)
 
     @bindings.add("+")
     def inc_width(self):
-        self._max_cell_width += 1
+        """Increase max_cell_width by one"""
+        self._max_cell_width = (self._max_cell_width or config.max_cell_width) + 1
         self.update(self.content, self.state)
 
     @bindings.add("-")
     def dec_width(self):
-        self._max_cell_width -= 1
+        """Decrease max_cell_width by one"""
+        self._max_cell_width = (self._max_cell_width or config.max_cell_width) - 1
         self.update(self.content, self.state)
 
     @override
