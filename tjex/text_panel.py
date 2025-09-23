@@ -78,7 +78,7 @@ class TextEditPanel(Panel):
             )
         )
 
-    @bindings.add("\x1f")  # C-_
+    @bindings.add("C-_")
     def undo(self):
         self.set_state(self.history.pop(self.state))
 
@@ -92,16 +92,16 @@ class TextEditPanel(Panel):
         config.do_copy(self.content)
         return StatusUpdate("Copied.")
 
-    @bindings.add("\x0b")  # C-k
+    @bindings.add("C-k")
     def kill_line(self):
         """Delete everything to the right of the cursor"""
         self.delete(len(self.content))
 
-    @bindings.add("KEY_DC", "\x04")  # C-d
+    @bindings.add("KEY_DC", "C-d")
     def delete_next_char(self):
         self.delete(self.cursor + 1)
 
-    @bindings.add("M-KEY_DC", "M-d", "kDC5")  # C-<delete>
+    @bindings.add("M-KEY_DC", "M-d", "C-<delete>")
     def delete_next_word(self):
         self.delete(self.next_word())
 
@@ -109,31 +109,31 @@ class TextEditPanel(Panel):
     def delete_prev_char(self):
         self.delete(self.cursor - 1)
 
-    @bindings.add("M-KEY_BACKSPACE", "\x08")  # C-<backspace>
+    @bindings.add("M-KEY_BACKSPACE", "C-<backspace>")
     def delete_prev_word(self):
         self.delete(self.prev_word())
 
-    @bindings.add("KEY_RIGHT", "\x06")  # C-f
+    @bindings.add("KEY_RIGHT", "C-f")
     def forward_char(self):
         self.set_cursor(self.cursor + 1)
 
-    @bindings.add("M-KEY_RIGHT", "kRIT5", "M-f")  # C-<right>
+    @bindings.add("M-KEY_RIGHT", "C-<right>", "M-f")
     def forward_word(self):
         self.set_cursor(self.next_word())
 
-    @bindings.add("KEY_LEFT", "\x02")  # C-b
+    @bindings.add("KEY_LEFT", "C-b")
     def backward_char(self):
         self.set_cursor(max(self.cursor - 1, 0))
 
-    @bindings.add("M-KEY_LEFT", "kLFT5", "M-b")  # C-<left>
+    @bindings.add("M-KEY_LEFT", "C-<left>", "M-b")
     def backward_word(self):
         self.set_cursor(self.prev_word())
 
-    @bindings.add("KEY_END", "\x05")  # C-e
+    @bindings.add("KEY_END", "C-e")
     def end(self):
         self.set_cursor(len(self.content))
 
-    @bindings.add("KEY_HOME", "\x01")  # C-a
+    @bindings.add("KEY_HOME", "C-a")
     def home(self):
         self.set_cursor(0)
 

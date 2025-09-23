@@ -144,11 +144,11 @@ def tjex(
 
     bindings: KeyBindings[None, Event | None] = KeyBindings()
 
-    @bindings.add("\x07", "\x04")  # C-g, C-d
+    @bindings.add("C-g", "C-d")
     def quit(_: None):  # pyright: ignore[reportUnusedFunction]
         return Quit()
 
-    @bindings.add("M-o", "\x0f")  # C-o
+    @bindings.add("M-o", "C-o")
     def toggle_active(_: None):  # pyright: ignore[reportUnusedFunction]
         """Toggle active panel between prompt and table"""
         if active_cycle[0] == prompt:
@@ -158,7 +158,7 @@ def tjex(
             active_cycle[-1].set_active(False)
             active_cycle[0].set_active(True)
 
-    _ = bindings.add("\x1f", "ESC", name="undo")(lambda _: prompt.undo())  # C-_
+    _ = bindings.add("C-_", "ESC", name="undo")(lambda _: prompt.undo())
     _ = bindings.add("M-_", name="redo")(lambda _: prompt.redo())
 
     @bindings.add("M-\n")

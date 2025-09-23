@@ -13,6 +13,25 @@ def setup_plain_colors():
         curses.init_pair(i, i, curses.COLOR_BLACK)
 
 
+KEY_ALIASES = {
+    "C-g": "\x07",
+    "C-d": "\x04",
+    "C-o": "\x0f",
+    "C-_": "\x1f",
+    "C-e": "\x05",
+    "C-a": "\x01",
+    "C-k": "\x0b",
+    "C-<delete>": "kDC5",
+    "C-<backspace>": "\x08",
+    "C-f": "\x06",
+    "C-<right>": "kRIT5",
+    "C-b": "\x02",
+    "C-<left>": "kLFT5",
+    "C-p": "\x10",
+    "C-n": "\x0e",
+}
+
+
 class KeyReader:
     def __init__(self, window: curses.window):
         curses.set_escdelay(10)
