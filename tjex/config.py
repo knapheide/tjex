@@ -75,7 +75,10 @@ def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
             res += "\n\n"
             if doc := config.__dataclass_fields__[k].metadata.get("doc"):
                 res += comment_out(doc)
-            res += f"{json.dumps(k)} = {json.dumps(v)}"
+            if v is None:
+                res += comment_out(f'{json.dumps(k)} = ""')
+            else:
+                res += f"{json.dumps(k)} = {json.dumps(v)}"
 
     for panel, b in bindings.items():
         res += f"\n\n"
