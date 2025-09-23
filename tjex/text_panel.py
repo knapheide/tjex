@@ -88,11 +88,13 @@ class TextEditPanel(Panel):
 
     @bindings.add("M-w")
     def copy(self):
+        """Copy current prompt to clipboard"""
         config.do_copy(self.content)
         return StatusUpdate("Copied.")
 
     @bindings.add("\x0b")  # C-k
     def kill_line(self):
+        """Delete everything to the right of the cursor"""
         self.delete(len(self.content))
 
     @bindings.add("KEY_DC", "\x04")  # C-d

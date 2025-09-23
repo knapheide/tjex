@@ -485,6 +485,7 @@ class TablePanel(Panel):
 
     @bindings.add("\n")
     def enter_cell(self):
+        """Enter highlighted cell by appending selector to jq prompt"""
         if (selector := self.cell_selector) is not None:
             return self.Select(selector)
         else:
@@ -492,6 +493,7 @@ class TablePanel(Panel):
 
     @bindings.add("M-\n")
     def enter_row(self):
+        """Enter highlighted cell's row by appending selector to jq prompt"""
         try:
             return self.Select(key_to_selector(self.row_keys[self.cursor.y]))
         except KeyError:
@@ -499,10 +501,12 @@ class TablePanel(Panel):
 
     @bindings.add("M-<")
     def first_row(self):
+        """Jump to first row"""
         self.cursor = replace(self.cursor, y=0)
 
     @bindings.add("M->")
     def last_row(self):
+        """Jump to last row"""
         self.cursor = replace(self.cursor, y=len(self.row_keys) - 1)
 
     @bindings.add("KEY_NPAGE")
@@ -515,24 +519,29 @@ class TablePanel(Panel):
 
     @bindings.add("KEY_END", "\x05")  # C-e
     def last_col(self):
+        """Jump to last column"""
         self.cursor = replace(self.cursor, x=len(self.col_keys) - 1)
 
     @bindings.add("KEY_HOME", "\x01")  # C-a
     def first_col(self):
+        """Jump to first column"""
         self.cursor = replace(self.cursor, x=0)
 
     @bindings.add("l")
     def full_width(self):
+        """Toggle: rendering all cells with their full width vs. max_cell_width"""
         self.full_cell_width = not self.full_cell_width
         self.update(self.content, self.state)
 
     @bindings.add("+")
     def inc_width(self):
+        """Increase max_cell_width by one"""
         self._max_cell_width = (self._max_cell_width or config.max_cell_width) + 1
         self.update(self.content, self.state)
 
     @bindings.add("-")
     def dec_width(self):
+        """Decrease max_cell_width by one"""
         self._max_cell_width = (self._max_cell_width or config.max_cell_width) - 1
         self.update(self.content, self.state)
 

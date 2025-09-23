@@ -150,6 +150,7 @@ def tjex(
 
     @bindings.add("M-o", "\x0f")  # C-o
     def toggle_active(_: None):  # pyright: ignore[reportUnusedFunction]
+        """Toggle active panel between prompt and table"""
         if active_cycle[0] == prompt:
             update_status(block=True)  # pyright: ignore[reportUnusedCallResult]
         if active_cycle[0] != prompt or jq.latest_status.content is not None:
@@ -162,10 +163,12 @@ def tjex(
 
     @bindings.add("M-\n")
     def add_to_history(_: None):  # pyright: ignore[reportUnusedFunction]
+        """Append tjex call with current command to shell's history"""
         return append_history(prompt.content)
 
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Copy output of current command to clipboard"""
         try:
             loaded_config.do_copy(json.dumps(jq.run_plain()))
             status.content = "Copied."
