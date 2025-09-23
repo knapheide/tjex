@@ -458,19 +458,19 @@ class TablePanel(Panel):
             self.content_window.content_base, y=0
         )
 
-    @bindings.add("KEY_UP", "p", "\x10")  # C-p
+    @bindings.add("KEY_UP", "p", "C-p")
     def up(self):
         self.cursor += Point(-1, 0)
 
-    @bindings.add("KEY_DOWN", "n", "\x0e")  # C-n
+    @bindings.add("KEY_DOWN", "n", "C-n")
     def down(self):
         self.cursor += Point(1, 0)
 
-    @bindings.add("KEY_LEFT", "b", "\x02")  # C-b
+    @bindings.add("KEY_LEFT", "b", "C-b")
     def left(self):
         self.cursor += Point(0, -1)
 
-    @bindings.add("KEY_RIGHT", "f", "\x06")  # C-f
+    @bindings.add("KEY_RIGHT", "f", "C-f")
     def right(self):
         self.cursor += Point(0, 1)
 
@@ -517,12 +517,12 @@ class TablePanel(Panel):
     def prev_page(self):
         self.cursor -= Point(self.content_window.height, 0)
 
-    @bindings.add("KEY_END", "\x05")  # C-e
+    @bindings.add("KEY_END", "C-e")
     def last_col(self):
         """Jump to last column"""
         self.cursor = replace(self.cursor, x=len(self.col_keys) - 1)
 
-    @bindings.add("KEY_HOME", "\x01")  # C-a
+    @bindings.add("KEY_HOME", "C-a")
     def first_col(self):
         """Jump to first column"""
         self.cursor = replace(self.cursor, x=0)
