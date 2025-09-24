@@ -14,6 +14,7 @@ If no file is given, `tjex` will try to read json from stdin.
 You will start out at the prompt at the bottom of the table.
 Enter a `jq` filter and the table will immediately update to show its output.
 Use `M-o` to switch to interactive navigation through the table.
+Exit with `C-g`.
 
 In the table view, you can navigate using the arrow keys and use `<return>` to descend into the currently selected cell.
 Use `ESC` or `C-_` to undo prompt changes.
