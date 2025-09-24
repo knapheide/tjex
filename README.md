@@ -15,6 +15,11 @@ You will start out at the prompt at the bottom of the table.
 Enter a `jq` filter and the table will immediately update to show its output.
 Use `M-o` to switch to interactive navigation through the table.
 
+In the table view, you can navigate using the arrow keys and use `<return>` to descend into the currently selected cell.
+Use `ESC` or `C-_` to undo prompt changes.
+
+For a full list of hotkeys, look at the example configuration in `~/.config/tjex/config.toml` which is automatically generated upon first invocation of tjex.
+
 ## Installation
 
 ### Requirements
@@ -27,6 +32,27 @@ Use `M-o` to switch to interactive navigation through the table.
 
 ```shell
 pipx install git+https://github.com/knapheide/tjex.git
+```
+
+## Configuration
+
+The default location for the configuration file is `~/.config/tjex/config.toml`.
+An example configuration is automatically created when tjex is run for the first time.
+
+### Key bindings
+
+Key bindings can be customized as illustrated in the example configuration.
+
+Key names are taken from the curses library's `keyname` function.
+To find the name of a key, press it in tjex and watch the log output:
+
+```shell
+# In one terminal:
+tjex --logfile=tjex.log []
+# In another terminal:
+tail -f tjex.log
+# Now in the first terminal, press the desired key and look for a line of the form
+# DEBUG:tjex:key='...'
 ```
 
 ## TODO
@@ -45,9 +71,7 @@ pipx install git+https://github.com/knapheide/tjex.git
 * Transpose `TablePanel` (without changing the underlying data)
 * Configurable number formatting
 * Raw view
-* Documentation
-  * default key bindings
-  * configuration
+* better demo picture / animation in README
 * Per-panel dirty flag
 * Status message animation (for pending jq process)
 * Regression tests
