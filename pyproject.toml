@@ -1,6 +1,6 @@
 [project]
 name = "tjex"
-version = "0.0.1"
+version = "0.1.0"
 description = "A Tabular Json Explorer"
 readme = "README.md"
 license = "MIT"
@@ -15,3 +15,12 @@ tjex = "tjex.tjex:main"
 [tool.pyright]
 reportAny = false
 reportExplicitAny = false
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]

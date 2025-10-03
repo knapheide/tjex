@@ -72,10 +72,10 @@ tail -f tjex.log
 * Transpose `TablePanel` (without changing the underlying data)
 * Configurable number formatting
 * Raw view
-* better demo picture / animation in README
+* Better demo picture / animation in README
 * Per-panel dirty flag
 * Status message animation (for pending jq process)
-* Regression tests
-* Should i specify a build system?
-* nix flake
+* Nix flake
 * Plain-text search in table
+* Publish to PyPI
+* CI
