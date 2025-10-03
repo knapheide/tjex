@@ -1,6 +1,6 @@
 [project]
 name = "tjex"
-version = "0.0.1"
+version = "0.1.0"
 description = "A Tabular Json Explorer"
 readme = "README.md"
 license = "MIT"
