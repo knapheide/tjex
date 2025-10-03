@@ -78,3 +78,4 @@ tail -f tjex.log
 * Nix flake
 * Plain-text search in table
 * Publish to PyPI
+* CI
