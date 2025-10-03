@@ -76,6 +76,5 @@ tail -f tjex.log
 * Per-panel dirty flag
 * Status message animation (for pending jq process)
 * Regression tests
-* Should i specify a build system?
 * nix flake
 * Plain-text search in table
