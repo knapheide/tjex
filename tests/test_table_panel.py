@@ -1,8 +1,11 @@
-from typing import cast, Any, override
+import curses
+from typing import Any, cast, override
+
+import pytest
 from tjex.curses_helper import WindowRegion
 from tjex.point import Point
-from tjex.table_panel import EntryWidth, to_table_entry
-import curses
+from tjex.table_panel import EntryWidth, Json, TableEntry, to_table_entry
+
 
 class WindowRegionDummy(WindowRegion):
     def __init__(self, size: Point):
@@ -20,12 +23,16 @@ class WindowRegionDummy(WindowRegion):
         pass
 
 
-def test_entry_width():
-    data = [1.0]
-    refs  = ["1.0000000"]
+def entry_to_string(width: EntryWidth, entry: TableEntry):
+    dummy = WindowRegionDummy(Point(20, 20))
+    width.draw(dummy, Point.ZERO, entry)
+    return dummy.content
+
+
+@pytest.mark.parametrize(
+    "max_width,data,ref", [(50, [1.0], ["1.0000000"]), (4, [100000], ["1.0e+05"])]
+)
+def test_entry_width(max_width: int | None, data: list[Json], ref: list[str]):
     entries = [to_table_entry(v) for v in data]
-    width = EntryWidth(None, entries)
-    for entry, ref in zip(entries, refs):
-        dummy = WindowRegionDummy(Point(20,20))
-        width.draw(dummy, Point.ZERO, entry)
-        assert dummy.content == ref
+    width = EntryWidth(max_width, entries)
+    assert ref == [entry_to_string(width, entry) for entry in entries]

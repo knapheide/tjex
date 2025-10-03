@@ -52,6 +52,7 @@ def integer_chars(v: int | float):
 
 class EntryWidth:
     def __init__(self, max_width: int | None, entries: Iterable[TableEntry]):
+        min_scientific_width = 7
         min_width = 1
         full_width = 1
         integer_width = 1
@@ -66,7 +67,7 @@ class EntryWidth:
                     if int(v) != 0:
                         integer_width = max(integer_width, integer_chars(v))
                     if isinstance(v, float):
-                        min_width = max(min_width, 7)
+                        min_width = max(min_width, min_scientific_width)
                         if fraction_width is None:
                             fraction_width = 1
                         if v != 0.0:
@@ -79,13 +80,14 @@ class EntryWidth:
         full_width = max(full_width, integer_width + 1 + (fraction_width or -1))
         if max_width is None:
             max_width = full_width
-        self.min_width: int = min_width
-        self.full_width: int = full_width
-        self.width: int = max(min_width, min(max_width, full_width))
         if max_width < integer_width + 1 + (fraction_width or -1):
             fraction_width = None
         if max_width < integer_width:
             integer_width = max_width
+            min_width = max(min_width, min_scientific_width)
+        self.min_width: int = min_width
+        self.full_width: int = full_width
+        self.width: int = max(min_width, min(max_width, full_width))
         self.integer_width: int = integer_width
         self.fraction_width: int | None = fraction_width
 
@@ -542,7 +544,9 @@ class TablePanel(Panel):
     @bindings.add("-")
     def dec_width(self):
         """Decrease max_cell_width by one"""
-        self._max_cell_width = (self._max_cell_width or config.max_cell_width) - 1
+        self._max_cell_width = max(
+            1, (self._max_cell_width or config.max_cell_width) - 1
+        )
         self.update(self.content, self.state)
 
     @override
