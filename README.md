@@ -61,13 +61,6 @@ tail -f tjex.log
 * Mini history just for the table view
   * ESC to go one level up / return to the prompt
 * Multi-line cells
-* Bunch of transformation hotkeys:
-  * Delete row
-  * Select column
-  * Delete column
-  * Expand dict into column
-    * Can only do this if the parent is a dict as well
-  * Sort by
 * Kill ring for TextEditPanel
 * Transpose `TablePanel` (without changing the underlying data)
 * Configurable number formatting
@@ -79,3 +72,6 @@ tail -f tjex.log
 * Plain-text search in table
 * Publish to PyPI
 * CI
+* Smarter column ordering.
+  Extra entries in later rows should get inserted at the appropriate place, not appended.
+* When applying transformations, try to keep the cursor position

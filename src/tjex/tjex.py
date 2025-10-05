@@ -27,7 +27,7 @@ from tjex.jq import Jq, JqResult
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
-from tjex.table_panel import TablePanel, TableState
+from tjex.table_panel import TablePanel, TableState, Undefined, key_to_selector
 from tjex.text_panel import TextEditPanel, TextPanel
 from tjex.utils import TjexError
 
@@ -65,6 +65,12 @@ def append_history(jq_cmd: str) -> StatusUpdate:
 selector_pattern = re.compile(
     r"""\s*(\.\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)*\s*"""
 )
+
+
+def append_filter(command: str, filter: str):
+    if command == "":
+        return filter
+    return command + " | " + filter
 
 
 def append_selector(command: str, selector: str):
@@ -191,6 +197,73 @@ def tjex(
             status.content = "Copied."
         except TjexError as e:
             status.content = e.msg
+
+    @table.bindings.add("E")
+    def expand_row(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Expand the selected row"""
+        key = table.row_key
+        if key == Undefined():
+            status.content = "Not an array or object"
+            return
+        prompt.update(append_filter(prompt.content, f"expand({json.dumps(key)})"))
+
+    @table.bindings.add("e")
+    def expand_col(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Expand the selected column"""
+        key = table.col_key
+        if key == Undefined():
+            status.content = "Not an array or object"
+            return
+        prompt.update(
+            append_filter(prompt.content, f"map_values(expand({json.dumps(key)}))")
+        )
+
+    @table.bindings.add("K")
+    def delete_row(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Delete the selected row"""
+        key = table.row_key
+        if key == Undefined():
+            status.content = "Not an array or object"
+            return
+        prompt.update(append_filter(prompt.content, f"del({key_to_selector(key)})"))
+
+    @table.bindings.add("k")
+    def delete_col(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Delete the selected column"""
+        key = table.col_key
+        if key == Undefined():
+            status.content = "Not an array or object"
+            return
+        prompt.update(
+            append_filter(prompt.content, f"map_values(del({key_to_selector(key)}))")
+        )
+
+    @table.bindings.add("m")
+    def select_col(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Enter the selected column"""
+        key = table.col_key
+        if key == Undefined():
+            status.content = "Not an array or object"
+            return
+        prompt.update(
+            append_filter(prompt.content, f"map_values({key_to_selector(key)})")
+        )
+
+    @table.bindings.add("s")
+    def sort_by_col(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Sort rows by the selected column.
+        Works only for arrays right now.
+        """
+        if not isinstance(table.row_key, int):
+            status.content = "Not an array"
+            return
+        key = table.col_key
+        if key == Undefined():
+            prompt.update(append_filter(prompt.content, f"sort"))
+        else:
+            prompt.update(
+                append_filter(prompt.content, f"sort_by({key_to_selector(key)})")
+            )
 
     load_config(
         config, {"global": bindings, "prompt": prompt.bindings, "table": table.bindings}
