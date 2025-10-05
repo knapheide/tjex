@@ -477,11 +477,17 @@ class TablePanel(Panel):
         self.cursor += Point(0, 1)
 
     @property
+    def row_key(self):
+        return self.row_keys[self.cursor.y]
+
+    @property
+    def col_key(self):
+        return self.col_keys[self.cursor.x]
+
+    @property
     def cell_selector(self):
         try:
-            return key_to_selector(self.row_keys[self.cursor.y]) + key_to_selector(
-                self.col_keys[self.cursor.x]
-            )
+            return key_to_selector(self.row_key) + key_to_selector(self.col_key)
         except KeyError:
             return None
 

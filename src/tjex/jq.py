@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.resources
 import json
 import subprocess as sp
 from dataclasses import dataclass
@@ -32,6 +33,9 @@ class Jq:
         assert get_start_method() == "forkserver"
         self.file: list[Path] = file
         self.extra_args: list[str] = ["--slurp"] if slurp or len(file) > 1 else []
+        self.prelude: str = importlib.resources.read_text(
+            "tjex.resources", "builtins.jq"
+        )
 
     @staticmethod
     def run(command: list[str], result: Queue[JqResult]):
@@ -60,10 +64,16 @@ class Jq:
             if self.result is not None:
                 self.result.close()
             self.result = Queue()
+
             self.process = Process(
                 target=self.run,
                 args=(
-                    ["jq", *self.extra_args, command or ".", *self.file],
+                    [
+                        "jq",
+                        *self.extra_args,
+                        self.prelude + (command or "."),
+                        *self.file,
+                    ],
                     self.result,
                 ),
             )
@@ -89,7 +99,7 @@ class Jq:
         if command is None:
             command = self.command
         res = sp.run(
-            ["jq", *self.extra_args, command or ".", *self.file],
+            ["jq", *self.extra_args, self.prelude + (command or "."), *self.file],
             capture_output=True,
         )
         if res.returncode != 0:
