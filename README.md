@@ -56,6 +56,18 @@ tail -f tjex.log
 # DEBUG:tjex:key='...'
 ```
 
+## Alternatives
+
+* [jless](https://github.com/PaulJuliusMartinez/jless)
+  is a command-line json viewer that basically displays the indented and syntax-highlighted json file.
+  To get a better overview of the structure, individual objects and arrays can be collapsed or expanded.
+* [jnv](https://github.com/ynqa/jnv) provides an interactive jq prompt together with a jless-style viewer.
+  However, the prompt is not updated when browsing through the viewer.
+* [fx](https://fx.wtf/getting-started) has an interactive mode with a prompt.
+  This prompt appears to be limited to path expressions and only influences the cursor position in the displayed json file.
+* [nushell](https://www.nushell.sh)'s [explore](https://www.nushell.sh/book/explore.html) command displays data in a tabular form similar to tjex.
+  It has a `:try` sub-command that provides a nushell prompt.
+
 ## TODO
 * Separate persistent command history for TextEditPanel
 * Mini history just for the table view
