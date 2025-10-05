@@ -15,3 +15,18 @@ def expand($key):
     | map(.key = "\(.key)")
     | from_entries
   end;
+
+def expand_flat($key):
+  if
+    (($key | type) == "number" and type == "array")
+    or (($key | type) == "string" and type == "object")
+  then
+    to_entries
+    | map(if .key==$key and (.value | is_iterable)
+          then .value | to_entries
+          else [.]
+          end)
+    | flatten(1)
+    | map(.key = "\(.key)")
+    | from_entries
+  end;

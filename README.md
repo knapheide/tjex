@@ -72,6 +72,4 @@ tail -f tjex.log
 * Plain-text search in table
 * Publish to PyPI
 * CI
-* Smarter column ordering.
-  Extra entries in later rows should get inserted at the appropriate place, not appended.
 * When applying transformations, try to keep the cursor position

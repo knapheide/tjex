@@ -250,6 +250,58 @@ def key_to_selector(key: TableKey):
             return f".[{json.dumps(key)}]"
 
 
+def compare_prefix_len(base: str, a: str, b: str):
+    for i, c in enumerate(base):
+        if i >= len(a) or a[i] != c:
+            return False
+        if i >= len(b) or b[i] != c:
+            return True
+    return True
+
+
+def merge_keys(a: list[str], b: list[str]):
+    ia, ib = (0, 0)
+    res: list[str] = []
+    while ia < len(a) or ib < len(b):
+        if ia < len(a) and a[ia] in res:
+            ia += 1
+        elif ib < len(b) and b[ib] in res:
+            ib += 1
+        elif ia < len(a) and ib < len(b) and a[ia] == b[ib]:
+            res.append(a[ia])
+            ia += 1
+            ib += 1
+        elif ib >= len(b) or b[ib] in a[ia:]:
+            res.append(a[ia])
+            ia += 1
+        elif ia >= len(a) or a[ia] in b[ib:]:
+            res.append(b[ib])
+            ib += 1
+        elif compare_prefix_len(next(iter(res[-1:]), ""), a[ia], b[ib]):
+            res.append(a[ia])
+            ia += 1
+        else:
+            res.append(b[ib])
+            ib += 1
+    return res
+
+
+def collect_keys(entries: Iterable[Iterable[TableKey]]):
+    undefined = set[Undefined]()
+    keys_set = set[str]()
+    keys_order: list[str] = []
+    max_len = 0
+    for entry in entries:
+        undefined.update({key for key in entry if isinstance(key, Undefined)})
+        max_len = max([max_len, *(key + 1 for key in entry if isinstance(key, int))])
+        if any(key not in keys_set for key in entry if isinstance(key, str)):
+            keys_order = merge_keys(
+                keys_order, [key for key in entry if isinstance(key, str)]
+            )
+            keys_set = set(keys_order)
+    return [*undefined, *keys_order, *range(max_len)]
+
+
 @dataclass
 class TableState:
     cursor: Point
@@ -301,16 +353,8 @@ class TablePanel(Panel):
     def update(self, content: TableContent, state: TableState | None):
         self.content = content
 
-        # Using dicts here because that retains the order
-        self.col_keys = list({c: c for r in self.content.values() for c in r.keys()})
-        self.row_keys = list({r: r for r in self.content.keys()})
-
-        self.col_keys.sort(
-            key=lambda k: 0 if k == Undefined() else 1 if isinstance(k, str) else 2
-        )
-        self.row_keys.sort(
-            key=lambda k: 0 if k == Undefined() else 1 if isinstance(k, str) else 2
-        )
+        self.col_keys = collect_keys(r.keys() for r in self.content.values())
+        self.row_keys = collect_keys([r] for r in self.content.keys())
 
         self.col_widths = [
             EntryWidth(
