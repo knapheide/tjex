@@ -25,8 +25,10 @@ KEY_ALIASES = {
     "C-<backspace>": "\x08",
     "C-f": "\x06",
     "C-<right>": "kRIT5",
+    "M-<right>": "kRIT3",
     "C-b": "\x02",
     "C-<left>": "kLFT5",
+    "M-<left>": "kLFT3",
     "C-p": "\x10",
     "C-n": "\x0e",
 }

@@ -117,7 +117,7 @@ class TextEditPanel(Panel):
     def forward_char(self):
         self.set_cursor(self.cursor + 1)
 
-    @bindings.add("M-KEY_RIGHT", "C-<right>", "M-f")
+    @bindings.add("M-KEY_RIGHT", "C-<right>", "M-<right>", "M-f")
     def forward_word(self):
         self.set_cursor(self.next_word())
 
@@ -125,7 +125,7 @@ class TextEditPanel(Panel):
     def backward_char(self):
         self.set_cursor(max(self.cursor - 1, 0))
 
-    @bindings.add("M-KEY_LEFT", "C-<left>", "M-b")
+    @bindings.add("M-KEY_LEFT", "C-<left>", "M-<left>", "M-b")
     def backward_word(self):
         self.set_cursor(self.prev_word())
 
