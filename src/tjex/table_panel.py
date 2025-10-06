@@ -250,7 +250,9 @@ def key_to_selector(key: TableKey):
             return f".[{json.dumps(key)}]"
 
 
-def compare_prefix_len(base: str, a: str, b: str):
+def compare_prefix_len(base: str | None, a: str, b: str):
+    if base is None:
+        return True
     for i, c in enumerate(base):
         if i >= len(a) or a[i] != c:
             return False
@@ -259,11 +261,12 @@ def compare_prefix_len(base: str, a: str, b: str):
     return True
 
 
-def merge_keys(a: list[str], b: list[str]):
+def merge_keys(a_set: set[str], a: list[str], b: list[str]):
+    b_set = set(b)
     ia, ib = (0, 0)
     # Using a dict because it preserves insertion order
     res: dict[str, None] = {}
-    prev_key = ""
+    prev_key = None
     while True:
         if ia >= len(a):
             return list(res.keys()) + b[ib:]
@@ -279,11 +282,11 @@ def merge_keys(a: list[str], b: list[str]):
             prev_key = a[ia]
             ia += 1
             ib += 1
-        elif b[ib] in a[ia:]:
+        elif b[ib] in a_set:
             res[a[ia]] = None
             prev_key = a[ia]
             ia += 1
-        elif a[ia] in b[ib:]:
+        elif a[ia] in b_set:
             res[b[ib]] = None
             prev_key = b[ib]
             ib += 1
@@ -305,11 +308,10 @@ def collect_keys(entries: Iterable[Iterable[TableKey]]):
     for entry in entries:
         undefined.update({key for key in entry if isinstance(key, Undefined)})
         max_len = max([max_len, *(key + 1 for key in entry if isinstance(key, int))])
-        if any(key not in keys_set for key in entry if isinstance(key, str)):
-            keys_order = merge_keys(
-                keys_order, [key for key in entry if isinstance(key, str)]
-            )
-            keys_set = set(keys_order)
+        str_keys = [key for key in entry if isinstance(key, str)]
+        if any(key not in keys_set for key in str_keys):
+            keys_order = merge_keys(keys_set, keys_order, str_keys)
+            keys_set.update(str_keys)
     return [*undefined, *keys_order, *range(max_len)]
 
 
