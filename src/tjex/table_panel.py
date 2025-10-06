@@ -261,29 +261,40 @@ def compare_prefix_len(base: str, a: str, b: str):
 
 def merge_keys(a: list[str], b: list[str]):
     ia, ib = (0, 0)
-    res: list[str] = []
-    while ia < len(a) or ib < len(b):
-        if ia < len(a) and a[ia] in res:
+    # Using a dict because it preserves insertion order
+    res: dict[str, None] = {}
+    prev_key = ""
+    while True:
+        if ia >= len(a):
+            return list(res.keys()) + b[ib:]
+        if ib >= len(b):
+            return list(res.keys()) + a[ia:]
+
+        if a[ia] in res:
             ia += 1
-        elif ib < len(b) and b[ib] in res:
+        elif b[ib] in res:
             ib += 1
-        elif ia < len(a) and ib < len(b) and a[ia] == b[ib]:
-            res.append(a[ia])
+        elif a[ia] == b[ib]:
+            res[a[ia]] = None
+            prev_key = a[ia]
             ia += 1
             ib += 1
-        elif ib >= len(b) or b[ib] in a[ia:]:
-            res.append(a[ia])
+        elif b[ib] in a[ia:]:
+            res[a[ia]] = None
+            prev_key = a[ia]
             ia += 1
-        elif ia >= len(a) or a[ia] in b[ib:]:
-            res.append(b[ib])
+        elif a[ia] in b[ib:]:
+            res[b[ib]] = None
+            prev_key = b[ib]
             ib += 1
-        elif compare_prefix_len(next(iter(res[-1:]), ""), a[ia], b[ib]):
-            res.append(a[ia])
+        elif compare_prefix_len(prev_key, a[ia], b[ib]):
+            res[a[ia]] = None
+            prev_key = a[ia]
             ia += 1
         else:
-            res.append(b[ib])
+            res[b[ib]] = None
+            prev_key = b[ib]
             ib += 1
-    return res
 
 
 def collect_keys(entries: Iterable[Iterable[TableKey]]):
