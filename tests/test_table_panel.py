@@ -1,10 +1,11 @@
 import curses
+from timeit import timeit
 from typing import Any, cast, override
 
 import pytest
 from tjex.curses_helper import WindowRegion
 from tjex.point import Point
-from tjex.table_panel import EntryWidth, Json, TableEntry, to_table_entry
+from tjex.table_panel import EntryWidth, Json, TableEntry, collect_keys, to_table_entry
 
 
 class WindowRegionDummy(WindowRegion):
@@ -36,3 +37,15 @@ def test_entry_width(max_width: int | None, data: list[Json], ref: list[str]):
     entries = [to_table_entry(v) for v in data]
     width = EntryWidth(max_width, entries)
     assert ref == [entry_to_string(width, entry) for entry in entries]
+
+
+def test_merge_keys_speed():
+    # TODO some assertion for this?
+    print(
+        timeit(
+            lambda: collect_keys(
+                [[f"data.{i}" for i in range(100000 + 100000 * j)] for j in range(10)]
+            ),
+            number=1,
+        )
+    )

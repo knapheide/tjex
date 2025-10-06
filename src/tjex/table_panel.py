@@ -250,7 +250,9 @@ def key_to_selector(key: TableKey):
             return f".[{json.dumps(key)}]"
 
 
-def compare_prefix_len(base: str, a: str, b: str):
+def compare_prefix_len(base: str | None, a: str, b: str):
+    if base is None:
+        return True
     for i, c in enumerate(base):
         if i >= len(a) or a[i] != c:
             return False
@@ -259,31 +261,43 @@ def compare_prefix_len(base: str, a: str, b: str):
     return True
 
 
-def merge_keys(a: list[str], b: list[str]):
+def merge_keys(a_set: set[str], a: list[str], b: list[str]):
+    b_set = set(b)
     ia, ib = (0, 0)
-    res: list[str] = []
-    while ia < len(a) or ib < len(b):
-        if ia < len(a) and a[ia] in res:
+    # Using a dict because it preserves insertion order
+    res: dict[str, None] = {}
+    prev_key = None
+    while True:
+        if ia >= len(a):
+            return list(res.keys()) + b[ib:]
+        if ib >= len(b):
+            return list(res.keys()) + a[ia:]
+
+        if a[ia] in res:
             ia += 1
-        elif ib < len(b) and b[ib] in res:
+        elif b[ib] in res:
             ib += 1
-        elif ia < len(a) and ib < len(b) and a[ia] == b[ib]:
-            res.append(a[ia])
+        elif a[ia] == b[ib]:
+            res[a[ia]] = None
+            prev_key = a[ia]
             ia += 1
             ib += 1
-        elif ib >= len(b) or b[ib] in a[ia:]:
-            res.append(a[ia])
+        elif b[ib] in a_set:
+            res[a[ia]] = None
+            prev_key = a[ia]
             ia += 1
-        elif ia >= len(a) or a[ia] in b[ib:]:
-            res.append(b[ib])
+        elif a[ia] in b_set:
+            res[b[ib]] = None
+            prev_key = b[ib]
             ib += 1
-        elif compare_prefix_len(next(iter(res[-1:]), ""), a[ia], b[ib]):
-            res.append(a[ia])
+        elif compare_prefix_len(prev_key, a[ia], b[ib]):
+            res[a[ia]] = None
+            prev_key = a[ia]
             ia += 1
         else:
-            res.append(b[ib])
+            res[b[ib]] = None
+            prev_key = b[ib]
             ib += 1
-    return res
 
 
 def collect_keys(entries: Iterable[Iterable[TableKey]]):
@@ -294,11 +308,10 @@ def collect_keys(entries: Iterable[Iterable[TableKey]]):
     for entry in entries:
         undefined.update({key for key in entry if isinstance(key, Undefined)})
         max_len = max([max_len, *(key + 1 for key in entry if isinstance(key, int))])
-        if any(key not in keys_set for key in entry if isinstance(key, str)):
-            keys_order = merge_keys(
-                keys_order, [key for key in entry if isinstance(key, str)]
-            )
-            keys_set = set(keys_order)
+        str_keys = [key for key in entry if isinstance(key, str)]
+        if any(key not in keys_set for key in str_keys):
+            keys_order = merge_keys(keys_set, keys_order, str_keys)
+            keys_set.update(str_keys)
     return [*undefined, *keys_order, *range(max_len)]
 
 

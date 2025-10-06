@@ -85,3 +85,5 @@ tail -f tjex.log
 * Publish to PyPI
 * CI
 * When applying transformations, try to keep the cursor position
+* Improve performance / support larger data sets.
+  The limiting factor should be the call to jq, not the python code.
