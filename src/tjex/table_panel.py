@@ -50,7 +50,7 @@ def integer_chars(v: int | float):
     return integer_digits(v) + (v < 0)
 
 
-class EntryWidth:
+class ColumnFormatter:
     def __init__(self, max_width: int | None, entries: Iterable[TableEntry]):
         min_scientific_width = 7
         min_width = 1
@@ -64,8 +64,7 @@ class EntryWidth:
                     if entry.fixed_width:
                         min_width = max(min_width, len(entry.s))
                 case NumberEntry(v):
-                    if int(v) != 0:
-                        integer_width = max(integer_width, integer_chars(v))
+                    integer_width = max(integer_width, integer_chars(v))
                     if isinstance(v, float):
                         min_width = max(min_width, min_scientific_width)
                         if fraction_width is None:
@@ -99,6 +98,17 @@ class EntryWidth:
         attr: int = 0,
         force_left: bool = False,
     ):
+        def leading_underscores(pos: Point, width: int):
+            if width > 1:
+                window.chgat(
+                    pos,
+                    width-1,
+                    curses.color_pair(curses.COLOR_BLUE)
+                    | curses.A_DIM
+                    | curses.A_UNDERLINE
+                    | attr,
+                )
+
         match entry:
             case StringEntry():
                 s = entry.s
@@ -125,14 +135,7 @@ class EntryWidth:
                             f"{{:{self.integer_width}d}}".format(v),
                             curses.color_pair(curses.COLOR_BLUE) | attr,
                         )
-                        window.chgat(
-                            pos,
-                            self.integer_width - integer_chars(v),
-                            curses.color_pair(curses.COLOR_BLUE)
-                            | curses.A_DIM
-                            | curses.A_UNDERLINE
-                            | attr,
-                        )
+                        leading_underscores(pos, self.integer_width - integer_chars(v))
                 elif self.fraction_width is None:
                     window.insstr(
                         pos,
@@ -154,14 +157,8 @@ class EntryWidth:
                         ),
                         curses.color_pair(curses.COLOR_BLUE) | attr,
                     )
-                    window.chgat(
-                        pos,
-                        self.integer_width - integer_chars(v),
-                        curses.color_pair(curses.COLOR_BLUE)
-                        | curses.A_DIM
-                        | curses.A_UNDERLINE
-                        | attr,
-                    )
+                    leading_underscores(pos, self.integer_width - integer_chars(v))
+
             case _:
                 pass
 
@@ -330,10 +327,10 @@ class TablePanel(Panel):
         self.full_cell_width: bool = False
         self.content: TableContent = {}
         self.col_keys: list[TableKey] = []
-        self.col_widths: list[EntryWidth] = []
+        self.col_formatters: list[ColumnFormatter] = []
         self.row_keys: list[TableKey] = []
         self.offsets: list[int] = []
-        self.row_header_width: EntryWidth = EntryWidth(None, [])
+        self.row_header_formatter: ColumnFormatter = ColumnFormatter(None, [])
         self.content_offset: Point = Point(1, 0)
         self.cursor: Point = Point(0, 0)
         self.content_window: WindowRegion = WindowRegion(self.window.window)
@@ -369,8 +366,8 @@ class TablePanel(Panel):
         self.col_keys = collect_keys(r.keys() for r in self.content.values())
         self.row_keys = collect_keys([r] for r in self.content.keys())
 
-        self.col_widths = [
-            EntryWidth(
+        self.col_formatters = [
+            ColumnFormatter(
                 self.max_cell_width,
                 [to_table_entry(c), *(r[c] for r in self.content.values() if c in r)],
             )
@@ -378,16 +375,16 @@ class TablePanel(Panel):
         ]
 
         self.offsets = [0]
-        for width in self.col_widths:
+        for width in self.col_formatters:
             self.offsets.append(self.offsets[-1] + width.width + 1)
 
-        self.row_header_width = EntryWidth(
+        self.row_header_formatter = ColumnFormatter(
             self.max_cell_width,
             [to_table_entry(r) for r in self.row_keys],
         )
         self.content_offset = Point(
             1,
-            self.row_header_width.width + 1,
+            self.row_header_formatter.width + 1,
         )
         self.resize()
         if state is not None:
@@ -436,7 +433,7 @@ class TablePanel(Panel):
         )
 
         for i in col_range:
-            self.col_widths[i].draw(
+            self.col_formatters[i].draw(
                 self.col_header_window,
                 Point(0, self.offsets[i]),
                 to_table_entry(self.col_keys[i]),
@@ -445,7 +442,7 @@ class TablePanel(Panel):
             )
 
         for i in row_range:
-            self.row_header_width.draw(
+            self.row_header_formatter.draw(
                 self.row_header_window,
                 Point(i, 0),
                 to_table_entry(self.row_keys[i]),
@@ -456,7 +453,7 @@ class TablePanel(Panel):
             for j in col_range:
                 entry = self.content[self.row_keys[i]].get(self.col_keys[j], None)
                 if entry is not None:
-                    self.col_widths[j].draw(
+                    self.col_formatters[j].draw(
                         self.content_window,
                         Point(i, self.offsets[j]),
                         entry,
@@ -466,10 +463,10 @@ class TablePanel(Panel):
             self.chgat_cursor(curses.A_REVERSE)
 
     def chgat_cursor(self, a: int):
-        if len(self.col_widths) > 0:
+        if len(self.col_formatters) > 0:
             self.content_window.chgat(
                 Point(self.cursor.y, self.offsets[self.cursor.x]),
-                self.col_widths[self.cursor.x].width,
+                self.col_formatters[self.cursor.x].width,
                 a,
             )
 
@@ -480,13 +477,13 @@ class TablePanel(Panel):
         )
 
         if (
-            self.offsets[self.cursor.x] + self.col_widths[self.cursor.x].width
+            self.offsets[self.cursor.x] + self.col_formatters[self.cursor.x].width
             > self.content_window.width + self.content_window.content_base.x
         ):
             self.content_window.content_base = replace(
                 self.content_window.content_base,
                 x=self.offsets[self.cursor.x]
-                + self.col_widths[self.cursor.x].width
+                + self.col_formatters[self.cursor.x].width
                 - self.content_window.width,
             )
         if self.offsets[self.cursor.x] < self.content_window.content_base.x:
