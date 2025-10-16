@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.resources
 import json
+import re
 import subprocess as sp
+import sys
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, get_start_method
 from pathlib import Path
@@ -10,6 +12,37 @@ from queue import Empty
 
 from tjex.table_panel import Json, TableContent, to_table_content
 from tjex.utils import TjexError
+
+
+def check_jq_version():
+    try:
+        res = sp.run(["jq", "--version"], check=True, stdout=sp.PIPE, text=True)
+        version_str = res.stdout.strip()
+        m = re.search(r"\d+(.\d+)+$", version_str)
+        if m is not None and [int(v) for v in m.group(0).split(".")] >= [1, 7]:
+            return
+        print(
+            f"Warning: Your installed version of jq is {version_str}, but tjex requires at least 1.7!",
+            file=sys.stderr,
+        )
+        print(
+            "You can continue to use tjex, but some or all features will not work correctly.",
+            file=sys.stderr,
+        )
+
+    except FileNotFoundError:
+        print("Warning: Cannot find jq executable!", file=sys.stderr)
+        print(
+            "You can continue to use tjex, but it is likely that nothing will work.",
+            file=sys.stderr,
+        )
+    print(
+        "Press <return> to continue or C-c to abort ",
+        end="",
+        flush=True,
+        file=sys.stderr,
+    )
+    _ = input()
 
 
 @dataclass
