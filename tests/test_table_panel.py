@@ -5,7 +5,13 @@ from typing import Any, cast, override
 import pytest
 from tjex.curses_helper import WindowRegion
 from tjex.point import Point
-from tjex.table_panel import EntryWidth, Json, TableEntry, collect_keys, to_table_entry
+from tjex.table_panel import (
+    ColumnFormatter,
+    Json,
+    TableEntry,
+    collect_keys,
+    to_table_entry,
+)
 
 
 class WindowRegionDummy(WindowRegion):
@@ -24,19 +30,25 @@ class WindowRegionDummy(WindowRegion):
         pass
 
 
-def entry_to_string(width: EntryWidth, entry: TableEntry):
+def entry_to_string(formatter: ColumnFormatter, entry: TableEntry):
     dummy = WindowRegionDummy(Point(20, 20))
-    width.draw(dummy, Point.ZERO, entry)
+    formatter.draw(dummy, Point.ZERO, entry)
     return dummy.content
 
 
 @pytest.mark.parametrize(
-    "max_width,data,ref", [(50, [1.0], ["1.0000000"]), (4, [100000], ["1.0e+05"])]
+    "max_width,data,ref",
+    [
+        (50, [1.0], ["1.0000000"]),
+        (50, [100.0], ["100.00000"]),
+        (50, [-0.01, 0.01], ["-0.0100000", " 0.0100000"]),
+        (4, [100000], ["1.0e+05"]),
+    ],
 )
-def test_entry_width(max_width: int | None, data: list[Json], ref: list[str]):
+def test_column_formatter(max_width: int | None, data: list[Json], ref: list[str]):
     entries = [to_table_entry(v) for v in data]
-    width = EntryWidth(max_width, entries)
-    assert ref == [entry_to_string(width, entry) for entry in entries]
+    formatter = ColumnFormatter(max_width, entries)
+    assert ref == [entry_to_string(formatter, entry) for entry in entries]
 
 
 def test_merge_keys_speed():
