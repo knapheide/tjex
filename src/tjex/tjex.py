@@ -23,7 +23,7 @@ from tjex import logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
 from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
-from tjex.jq import Jq, JqResult
+from tjex.jq import Jq, JqResult, check_jq_version
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
@@ -341,6 +341,7 @@ def main():
         for i in range(len(args.file)):
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
+        check_jq_version()
         result = curses.wrapper(
             tjex,
             **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
