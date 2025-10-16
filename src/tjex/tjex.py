@@ -272,8 +272,10 @@ def tjex(
         loaded_config.max_cell_width = max_cell_width
 
     resize()
-    active_cycle = [prompt, table]
-    prompt.set_active(True)
+    active_cycle = [table, prompt]
+    if loaded_config.start_at_prompt:
+        active_cycle = [prompt, table]
+    active_cycle[0].set_active(True)
     jq.update(prompt.content)
 
     redraw = True
