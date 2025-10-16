@@ -46,6 +46,9 @@ class Config:
         "atuin history end --exit 0 -- $(atuin history start -- {})",
         "Format string that generates a bash command to append the given string to a shell history",
     )
+    start_at_prompt: bool = config_field(
+        False, "On startup, focus the jq prompt instead of the table panel"
+    )
 
     def do_copy(self, s: str):
         if self.copy_command is None:

@@ -11,13 +11,15 @@ tjex example.json
 ```
 
 If no file is given, `tjex` will try to read json from stdin.
-You will start out at the prompt at the bottom of the table.
-Enter a `jq` filter and the table will immediately update to show its output.
-Use `M-o` to switch to interactive navigation through the table.
-Exit with `C-g`.
+You will start out in the table panel.
+Use the arrow keys to navigate around the table and press `<return>` to descend into the currently selected cell.
+The prompt at the bottom will update to show the current path.
+Use `ESC` or `C-_` to undo prompt changes, i.e. to navigate back up the hierarchy.
 
-In the table view, you can navigate using the arrow keys and use `<return>` to descend into the currently selected cell.
-Use `ESC` or `C-_` to undo prompt changes.
+`M-o` switches between the table panel and the jq prompt.
+The prompt accepts any valid jq filters.
+Changes are immediately reflected in the table panel.
+When you are done, exit with `C-g`.
 
 For a full list of hotkeys, look at the example configuration in `~/.config/tjex/config.toml` which is automatically generated upon first invocation of tjex.
 
