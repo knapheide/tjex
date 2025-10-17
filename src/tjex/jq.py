@@ -88,8 +88,8 @@ class Jq:
         except BaseException as e:
             result.put(JqResult(str(e), None))
 
-    def update(self, command: str):
-        if command != self.command:
+    def update(self, command: str, force: bool = False):
+        if force or command != self.command:
             if self.process is not None:
                 self.process.terminate()
                 self.process.join()
