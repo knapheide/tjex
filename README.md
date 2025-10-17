@@ -90,3 +90,5 @@ tail -f tjex.log
 * When applying transformations, try to keep the cursor position
 * Improve performance / support larger data sets.
   The limiting factor should be the call to jq, not the python code.
+* `--watch` option to automatically re-run filter.
+  Probably using [watchdog](https://github.com/gorakhargosh/watchdog).
