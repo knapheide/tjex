@@ -172,6 +172,11 @@ def tjex(
         """Append tjex call with current command to shell's history"""
         return append_history(prompt.content)
 
+    @bindings.add("g", "\n")
+    def reload(_: None):  # pyright: ignore[reportUnusedFunction]
+        """Re-run the current filter."""
+        jq.update(prompt.content, force=True)
+
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Copy output of current command to clipboard"""
