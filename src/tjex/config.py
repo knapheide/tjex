@@ -49,6 +49,7 @@ class Config:
     start_at_prompt: bool = config_field(
         False, "On startup, focus the jq prompt instead of the table panel"
     )
+    jq_command: str = config_field("jq", "Name of or full path to the jq executable")
 
     def do_copy(self, s: str):
         if self.copy_command is None:

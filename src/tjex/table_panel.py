@@ -244,7 +244,7 @@ def key_to_selector(key: TableKey):
         case str() if identifier_pattern.fullmatch(key):
             return f".{key}"
         case _:
-            return f".[{json.dumps(key)}]"
+            return f"[{json.dumps(key)}]"
 
 
 def compare_prefix_len(base: str | None, a: str, b: str):
