@@ -23,7 +23,7 @@ from tjex import logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
 from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
-from tjex.jq import Jq, JqResult, check_jq_version
+from tjex.jq import Jq, JqResult
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
@@ -63,7 +63,8 @@ def append_history(jq_cmd: str) -> StatusUpdate:
 
 
 selector_pattern = re.compile(
-    r"""\s*(\.\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)*\s*"""
+    r"""\s*(\.\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)"""
+    + r"""(\.?\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)*\s*"""
 )
 
 
@@ -74,11 +75,12 @@ def append_filter(command: str, filter: str):
 
 
 def append_selector(command: str, selector: str):
+    standalone_selector = ("" if selector.startswith(".") else ".") + selector
     if command == "":
-        return selector
+        return standalone_selector
     if selector_pattern.fullmatch(command.split("|")[-1]):
         return command + selector
-    return command + " | " + selector
+    return command + " | " + standalone_selector
 
 
 @dataclass
@@ -117,15 +119,16 @@ def tjex(
     panels = [table, prompt_head, prompt, status]
 
     def resize():
+        status_height = 2
         screen_size = Point(*stdscr.getmaxyx())
         table.window.pos = Point(0, 0)
         table.window.size = screen_size - Point(3, 0)
-        prompt_head.window.pos = Point(screen_size.y - 3, 0)
+        prompt_head.window.pos = Point(screen_size.y - status_height - 1, 0)
         prompt_head.window.size = Point(1, 2)
-        prompt.window.pos = Point(screen_size.y - 3, 2)
+        prompt.window.pos = Point(screen_size.y - status_height - 1, 2)
         prompt.window.size = Point(1, screen_size.x - 2)
-        status.window.pos = Point(screen_size.y - 2, 0)
-        status.window.size = Point(2, screen_size.x)
+        status.window.pos = Point(screen_size.y - status_height, 0)
+        status.window.size = Point(status_height, screen_size.x)
         for panel in panels:
             panel.resize()
 
@@ -346,7 +349,6 @@ def main():
         for i in range(len(args.file)):
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
-        check_jq_version()
         result = curses.wrapper(
             tjex,
             **{n: k for n, k in vars(args).items() if n not in {"logfile"}},

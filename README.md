@@ -28,8 +28,10 @@ For a full list of hotkeys, look at the example configuration in `~/.config/tjex
 ### Requirements
 
 * [python](https://www.python.org) __≥3.12__
-* [jq](https://jqlang.org) __≥1.7__
+* [jq](https://jqlang.org) (or [jaq](https://github.com/01mf02/jaq), [gojq](https://github.com/itchyny/gojq))
 * If [atuin](https://atuin.sh) is available, the current prompt can be appended to the history with `M-<return>`.
+
+To use jaq or gojq, set `jq_command` in `~/.config/tjex/config.toml`.
 
 ### With pipx
 
@@ -92,3 +94,5 @@ tail -f tjex.log
   The limiting factor should be the call to jq, not the python code.
 * `--watch` option to automatically re-run filter.
   Probably using [watchdog](https://github.com/gorakhargosh/watchdog).
+* Variable status panel height.
+  `jaq` error messages are rather big.
