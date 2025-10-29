@@ -74,13 +74,16 @@ def append_filter(command: str, filter: str):
     return command + " | " + filter
 
 
+def standalone_selector(selector: str):
+    return ("" if selector.startswith(".") else ".") + selector
+
+
 def append_selector(command: str, selector: str):
-    standalone_selector = ("" if selector.startswith(".") else ".") + selector
     if command == "":
-        return standalone_selector
+        return standalone_selector(selector)
     if selector_pattern.fullmatch(command.split("|")[-1]):
         return command + selector
-    return command + " | " + standalone_selector
+    return command + " | " + standalone_selector(selector)
 
 
 @dataclass
@@ -233,7 +236,11 @@ def tjex(
         if key == Undefined():
             status.content = "Not an array or object"
             return
-        prompt.update(append_filter(prompt.content, f"del({key_to_selector(key)})"))
+        prompt.update(
+            append_filter(
+                prompt.content, f"del({standalone_selector( key_to_selector(key))})"
+            )
+        )
 
     @table.bindings.add("k")
     def delete_col(_: Any):  # pyright: ignore[reportUnusedFunction]
@@ -243,7 +250,10 @@ def tjex(
             status.content = "Not an array or object"
             return
         prompt.update(
-            append_filter(prompt.content, f"map_values(del({key_to_selector(key)}))")
+            append_filter(
+                prompt.content,
+                f"map_values(del({standalone_selector(key_to_selector(key))}))",
+            )
         )
 
     @table.bindings.add("m")
@@ -254,7 +264,10 @@ def tjex(
             status.content = "Not an array or object"
             return
         prompt.update(
-            append_filter(prompt.content, f"map_values({key_to_selector(key)})")
+            append_filter(
+                prompt.content,
+                f"map_values({standalone_selector(key_to_selector(key))})",
+            )
         )
 
     @table.bindings.add("s")
@@ -270,7 +283,10 @@ def tjex(
             prompt.update(append_filter(prompt.content, f"sort"))
         else:
             prompt.update(
-                append_filter(prompt.content, f"sort_by({key_to_selector(key)})")
+                append_filter(
+                    prompt.content,
+                    f"sort_by({standalone_selector(key_to_selector(key))})",
+                )
             )
 
     load_config(
