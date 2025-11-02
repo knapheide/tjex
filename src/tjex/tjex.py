@@ -104,6 +104,7 @@ def tjex(
         "",
     )
     status_detail = TextPanel(WindowRegion(stdscr), "")
+    status_detail.attr = curses.A_DIM
     panels = [table, prompt_head, prompt, status, status_detail]
 
     def resize():

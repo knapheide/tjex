@@ -17,6 +17,7 @@ class TextPanel(Panel):
     def __init__(self, window: WindowRegion, content: str):
         self.window: WindowRegion = window
         self.content: str = content
+        self.attr: int = 0
 
     @override
     def handle_key(self, key: KeyPress):
@@ -25,7 +26,7 @@ class TextPanel(Panel):
     @override
     def draw(self):
         for i, s in enumerate(self.content.splitlines()):
-            self.window.insstr(Point(i, 0), s)
+            self.window.insstr(Point(i, 0), s, self.attr)
 
 
 @dataclass(frozen=True)
