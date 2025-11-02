@@ -125,11 +125,14 @@ def tjex(
     current_command: str = command
     table_cursor_history: dict[str, TableState] = {}
 
-    def update_status(block: bool = False):
+    def set_status(msg: str):
+        status.content = msg
+
+    def update_jq_status(block: bool = False):
         nonlocal current_command
         match jq.status(block):
             case JqResult(msg, content):
-                status.content = msg
+                set_status(msg)
                 if content is not None and jq.command is not None:
                     table_cursor_history[current_command] = table.state
                     current_command = jq.command
@@ -148,7 +151,7 @@ def tjex(
     def toggle_active(_: None):  # pyright: ignore[reportUnusedFunction]
         """Toggle active panel between prompt and table"""
         if active_cycle[0] == prompt:
-            update_status(block=True)  # pyright: ignore[reportUnusedCallResult]
+            update_jq_status(block=True)  # pyright: ignore[reportUnusedCallResult]
         if active_cycle[0] != prompt or jq.latest_status.table is not None:
             active_cycle.append(active_cycle.pop(0))
             active_cycle[-1].set_active(False)
@@ -296,18 +299,18 @@ def tjex(
                         case Quit():
                             return 0
                         case StatusUpdate(msg):
-                            status.content = msg
+                            set_status(msg)
                         case KeyPress("KEY_RESIZE"):
                             resize()
                         case _:
                             pass
             except TjexError as e:
-                status.content = e.msg
+                set_status(e.msg)
             jq.update(prompt.content)
             redraw = True
             continue
 
-        if update_status() or redraw:
+        if update_jq_status() or redraw:
             stdscr.erase()
             for panel in panels:
                 panel.draw()
