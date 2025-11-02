@@ -13,6 +13,7 @@ from tjex.config import config
 from tjex.curses_helper import WindowRegion
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
 from tjex.point import Point
+from tjex.utils import TjexError
 
 
 @dataclass(frozen=True)
@@ -102,7 +103,7 @@ class ColumnFormatter:
             if width > 1:
                 window.chgat(
                     pos,
-                    width-1,
+                    width - 1,
                     curses.color_pair(curses.COLOR_BLUE)
                     | curses.A_DIM
                     | curses.A_UNDERLINE
@@ -312,6 +313,11 @@ def collect_keys(entries: Iterable[Iterable[TableKey]]):
     return [*undefined, *keys_order, *range(max_len)]
 
 
+class TableEmptyError(TjexError):
+    def __init__(self):
+        super().__init__("Table is empty")
+
+
 @dataclass
 class TableState:
     cursor: Point
@@ -319,7 +325,7 @@ class TableState:
 
 
 class TablePanel(Panel):
-    bindings: KeyBindings[Self, Select | None] = KeyBindings()
+    bindings: KeyBindings[Self, Event | None] = KeyBindings()
 
     def __init__(self, window: WindowRegion):
         self.window: WindowRegion = window
@@ -475,6 +481,8 @@ class TablePanel(Panel):
             max(0, min(len(self.row_keys) - 1, self.cursor.y)),
             max(0, min(len(self.col_keys) - 1, self.cursor.x)),
         )
+        if not self.col_keys:
+            return
 
         if (
             self.offsets[self.cursor.x] + self.col_formatters[self.cursor.x].width
@@ -532,10 +540,14 @@ class TablePanel(Panel):
 
     @property
     def row_key(self):
+        if not self.row_keys:
+            raise TableEmptyError()
         return self.row_keys[self.cursor.y]
 
     @property
     def col_key(self):
+        if not self.col_keys:
+            raise TableEmptyError()
         return self.col_keys[self.cursor.x]
 
     @property
@@ -610,7 +622,7 @@ class TablePanel(Panel):
         self.update(self.content, self.state)
 
     @override
-    def handle_key(self, key: KeyPress) -> list[KeyPress | Select]:
+    def handle_key(self, key: KeyPress) -> list[Event]:
         res = self.bindings.handle_key(key, self)
         if isinstance(res, str):
             return [res]

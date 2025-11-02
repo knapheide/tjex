@@ -186,36 +186,29 @@ def tjex(
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Copy output of current command to clipboard"""
-        try:
-            loaded_config.do_copy(json.dumps(jq.run_plain()))
-            status.content = "Copied."
-        except TjexError as e:
-            status.content = e.msg
+        loaded_config.do_copy(json.dumps(jq.run_plain()))
+        return StatusUpdate("Copied.")
 
     @table.bindings.add("w")
     def copy_cell_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Copy content of the current cell to clipboard.
         If content is a string, copy the plain value, not the json representation.
         """
-        try:
-            content = jq.run_plain(
-                append_selector(jq.command or ".", table.cell_selector or "")
-            )
-            if isinstance(content, str):
-                loaded_config.do_copy(content)
-            else:
-                loaded_config.do_copy(json.dumps(content))
-            status.content = "Copied."
-        except TjexError as e:
-            status.content = e.msg
+        content = jq.run_plain(
+            append_selector(jq.command or ".", table.cell_selector or "")
+        )
+        if isinstance(content, str):
+            loaded_config.do_copy(content)
+        else:
+            loaded_config.do_copy(json.dumps(content))
+        return StatusUpdate("Copied.")
 
     @table.bindings.add("E")
     def expand_row(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Expand the selected row"""
         key = table.row_key
         if key == Undefined():
-            status.content = "Not an array or object"
-            return
+            raise TjexError("Not an array or object")
         prompt.update(append_filter(prompt.content, f"expand({json.dumps(key)})"))
 
     @table.bindings.add("e")
@@ -223,8 +216,7 @@ def tjex(
         """Expand the selected column"""
         key = table.col_key
         if key == Undefined():
-            status.content = "Not an array or object"
-            return
+            raise TjexError("Not an array or object")
         prompt.update(
             append_filter(prompt.content, f"map_values(expand({json.dumps(key)}))")
         )
@@ -234,8 +226,7 @@ def tjex(
         """Delete the selected row"""
         key = table.row_key
         if key == Undefined():
-            status.content = "Not an array or object"
-            return
+            raise TjexError("Not an array or object")
         prompt.update(
             append_filter(
                 prompt.content, f"del({standalone_selector( key_to_selector(key))})"
@@ -247,8 +238,7 @@ def tjex(
         """Delete the selected column"""
         key = table.col_key
         if key == Undefined():
-            status.content = "Not an array or object"
-            return
+            raise TjexError("Not an array or object")
         prompt.update(
             append_filter(
                 prompt.content,
@@ -261,8 +251,7 @@ def tjex(
         """Enter the selected column"""
         key = table.col_key
         if key == Undefined():
-            status.content = "Not an array or object"
-            return
+            raise TjexError("Not an array or object")
         prompt.update(
             append_filter(
                 prompt.content,
@@ -276,8 +265,7 @@ def tjex(
         Works only for arrays right now.
         """
         if not isinstance(table.row_key, int):
-            status.content = "Not an array"
-            return
+            raise TjexError("Not an array")
         key = table.col_key
         if key == Undefined():
             prompt.update(append_filter(prompt.content, f"sort"))
@@ -306,18 +294,21 @@ def tjex(
 
     while True:
         if (key := key_reader.get()) is not None:
-            for event in active_cycle[0].handle_key(KeyPress(key)):
-                match bindings.handle_key(event, None):
-                    case Quit():
-                        return 0
-                    case TablePanel.Select(selector):
-                        prompt.update(append_selector(prompt.content, selector))
-                    case StatusUpdate(msg):
-                        status.content = msg
-                    case KeyPress("KEY_RESIZE"):
-                        resize()
-                    case _:
-                        pass
+            try:
+                for event in active_cycle[0].handle_key(KeyPress(key)):
+                    match bindings.handle_key(event, None):
+                        case Quit():
+                            return 0
+                        case TablePanel.Select(selector):
+                            prompt.update(append_selector(prompt.content, selector))
+                        case StatusUpdate(msg):
+                            status.content = msg
+                        case KeyPress("KEY_RESIZE"):
+                            resize()
+                        case _:
+                            pass
+            except TjexError as e:
+                status.content = e.msg
             jq.update(prompt.content)
             redraw = True
             continue
