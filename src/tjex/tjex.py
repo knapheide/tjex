@@ -10,7 +10,7 @@ import subprocess as sp
 import sys
 import time
 from contextlib import ExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from multiprocessing import set_start_method
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -103,10 +103,11 @@ def tjex(
         ),
         "",
     )
-    panels = [table, prompt_head, prompt, status]
+    status_detail = TextPanel(WindowRegion(stdscr), "")
+    panels = [table, prompt_head, prompt, status, status_detail]
 
     def resize():
-        status_height = 2
+        status_height = 1
         screen_size = Point(*stdscr.getmaxyx())
         table.window.pos = Point(0, 0)
         table.window.size = screen_size - Point(3, 0)
@@ -116,6 +117,10 @@ def tjex(
         prompt.window.size = Point(1, screen_size.x - 2)
         status.window.pos = Point(screen_size.y - status_height, 0)
         status.window.size = Point(status_height, screen_size.x)
+        status_detail.window.size = replace(status_detail.window.size, x=screen_size.x)
+        status_detail.window.pos = Point(
+            screen_size.y - status_height - 1 - status_detail.window.height, 0
+        )
         for panel in panels:
             panel.resize()
 
@@ -126,7 +131,16 @@ def tjex(
     table_cursor_history: dict[str, TableState] = {}
 
     def set_status(msg: str):
-        status.content = msg
+        logger.debug(msg)
+        lines = msg.splitlines()
+        status.content = "\n".join(lines[:1])
+        if len(lines) <= 1:
+            status_detail.window.size = replace(status_detail.window.size, y=0)
+            status_detail.content = ""
+        else:
+            status_detail.window.size = replace(status_detail.window.size, y=len(lines))
+            status_detail.content = "\n".join(lines)
+        resize()
 
     def update_jq_status(block: bool = False):
         nonlocal current_command
