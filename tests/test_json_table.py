@@ -4,14 +4,14 @@ from typing import Any, cast, override
 
 import pytest
 from tjex.curses_helper import WindowRegion
-from tjex.point import Point
-from tjex.table_panel import (
-    ColumnFormatter,
+from tjex.json_table import (
     Json,
-    TableEntry,
+    JsonCellFormatter,
+    TableCell,
     collect_keys,
-    to_table_entry,
+    to_table_cell,
 )
+from tjex.point import Point
 
 
 class WindowRegionDummy(WindowRegion):
@@ -23,16 +23,18 @@ class WindowRegionDummy(WindowRegion):
 
     @override
     def insstr(self, pos: Point, s: str, attr: int = 0):
-        self.content = s
+        self.content = pos.x * " " + s
 
     @override
     def chgat(self, pos: Point, width: int, attr: int):
         pass
 
 
-def entry_to_string(formatter: ColumnFormatter, entry: TableEntry):
+def cell_to_string(
+    formatter: JsonCellFormatter, cell: TableCell, max_width: int | None
+):
     dummy = WindowRegionDummy(Point(20, 20))
-    formatter.draw(dummy, Point.ZERO, entry)
+    formatter.draw(cell, dummy, Point.ZERO, max_width, 0, False)
     return dummy.content
 
 
@@ -42,13 +44,14 @@ def entry_to_string(formatter: ColumnFormatter, entry: TableEntry):
         (50, [1.0], ["1.0000000"]),
         (50, [100.0], ["100.00000"]),
         (50, [-0.01, 0.01], ["-0.0100000", " 0.0100000"]),
-        (4, [100000], ["1.0e+05"]),
+        (4, [100000], ["100000"]),
+        (4, [10000000], ["1.0e+07"]),
     ],
 )
 def test_column_formatter(max_width: int | None, data: list[Json], ref: list[str]):
-    entries = [to_table_entry(v) for v in data]
-    formatter = ColumnFormatter(max_width, entries)
-    assert ref == [entry_to_string(formatter, entry) for entry in entries]
+    cells = [to_table_cell(v) for v in data]
+    formatter = JsonCellFormatter(cells)
+    assert ref == [cell_to_string(formatter, cell, max_width) for cell in cells]
 
 
 def test_merge_keys_speed():

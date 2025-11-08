@@ -5,7 +5,6 @@ import argparse
 import curses
 import json
 import os
-import re
 import shlex
 import subprocess as sp
 import sys
@@ -23,11 +22,20 @@ from tjex import logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
 from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
-from tjex.jq import Jq, JqResult
+from tjex.jq import (
+    Jq,
+    JqResult,
+    append_filter,
+    append_selector,
+    key_to_selector,
+    keys_to_selector,
+    standalone_selector,
+)
+from tjex.json_table import TableCell, TableKey, Undefined
 from tjex.logging import logger
 from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
-from tjex.table_panel import TablePanel, TableState, Undefined, key_to_selector
+from tjex.table_panel import TablePanel, TableState
 from tjex.text_panel import TextEditPanel, TextPanel
 from tjex.utils import TjexError
 
@@ -62,30 +70,6 @@ def append_history(jq_cmd: str) -> StatusUpdate:
     return StatusUpdate("Added to atuin history.")
 
 
-selector_pattern = re.compile(
-    r"""\s*(\.\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)"""
-    + r"""(\.?\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)*\s*"""
-)
-
-
-def append_filter(command: str, filter: str):
-    if command == "":
-        return filter
-    return command + " | " + filter
-
-
-def standalone_selector(selector: str):
-    return ("" if selector.startswith(".") else ".") + selector
-
-
-def append_selector(command: str, selector: str):
-    if command == "":
-        return standalone_selector(selector)
-    if selector_pattern.fullmatch(command.split("|")[-1]):
-        return command + selector
-    return command + " | " + standalone_selector(selector)
-
-
 @dataclass
 class Quit(Event):
     pass
@@ -102,7 +86,7 @@ def tjex(
     curses.curs_set(0)  # pyright: ignore[reportUnusedCallResult]
     setup_plain_colors()
 
-    table = TablePanel(WindowRegion(stdscr))
+    table = TablePanel[TableKey, TableCell](WindowRegion(stdscr))
     prompt_head = TextEditPanel(
         WindowRegion(stdscr),
         "> ",
@@ -165,7 +149,7 @@ def tjex(
         """Toggle active panel between prompt and table"""
         if active_cycle[0] == prompt:
             update_status(block=True)  # pyright: ignore[reportUnusedCallResult]
-        if active_cycle[0] != prompt or jq.latest_status.content is not None:
+        if active_cycle[0] != prompt or jq.latest_status.table is not None:
             active_cycle.append(active_cycle.pop(0))
             active_cycle[-1].set_active(False)
             active_cycle[0].set_active(True)
@@ -189,13 +173,25 @@ def tjex(
         loaded_config.do_copy(json.dumps(jq.run_plain()))
         return StatusUpdate("Copied.")
 
+    @table.bindings.add("\n")
+    def enter_cell(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Enter highlighted cell by appending selector to jq prompt"""
+        prompt.update(
+            append_selector(prompt.content, keys_to_selector(*table.cell_keys))
+        )
+
+    @table.bindings.add("M-\n")
+    def enter_row(_: Any):  # pyright: ignore[reportUnusedFunction]
+        """Enter highlighted cell's row by appending selector to jq prompt"""
+        prompt.update(append_selector(prompt.content, keys_to_selector(table.row_key)))
+
     @table.bindings.add("w")
     def copy_cell_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Copy content of the current cell to clipboard.
         If content is a string, copy the plain value, not the json representation.
         """
         content = jq.run_plain(
-            append_selector(jq.command or ".", table.cell_selector or "")
+            append_selector(jq.command or ".", keys_to_selector(*table.cell_keys) or "")
         )
         if isinstance(content, str):
             loaded_config.do_copy(content)
@@ -229,7 +225,7 @@ def tjex(
             raise TjexError("Not an array or object")
         prompt.update(
             append_filter(
-                prompt.content, f"del({standalone_selector( key_to_selector(key))})"
+                prompt.content, f"del({standalone_selector(key_to_selector(key))})"
             )
         )
 
@@ -299,8 +295,6 @@ def tjex(
                     match bindings.handle_key(event, None):
                         case Quit():
                             return 0
-                        case TablePanel.Select(selector):
-                            prompt.update(append_selector(prompt.content, selector))
                         case StatusUpdate(msg):
                             status.content = msg
                         case KeyPress("KEY_RESIZE"):

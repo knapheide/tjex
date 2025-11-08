@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.resources
 import json
+import re
 import subprocess as sp
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, get_start_method
@@ -9,18 +10,60 @@ from pathlib import Path
 from queue import Empty
 
 from tjex.config import config
-from tjex.table_panel import Json, TableContent, to_table_content
+from tjex.json_table import Json, TableCell, TableKey, Undefined, json_to_table
+from tjex.table import Table
 from tjex.utils import TjexError
 
 
 @dataclass
 class JqResult:
     message: str
-    content: TableContent | None
+    table: Table[TableKey, TableCell] | None
 
 
 class JqError(TjexError):
     pass
+
+
+identifier_pattern = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*")
+
+
+def key_to_selector(key: TableKey):
+    match key:
+        case Undefined():
+            return ""
+        case str() if identifier_pattern.fullmatch(key):
+            return f".{key}"
+        case _:
+            return f"[{json.dumps(key)}]"
+
+
+def keys_to_selector(*keys: TableKey):
+    return "".join(key_to_selector(key) for key in keys)
+
+
+selector_pattern = re.compile(
+    r"""\s*(\.\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)"""
+    + r"""(\.?\[("[^\]"\\]*"|\d+)\]|.[a-zA-Z_][a-zA-Z0-9_]*)*\s*"""
+)
+
+
+def append_filter(command: str, filter: str):
+    if command == "":
+        return filter
+    return command + " | " + filter
+
+
+def standalone_selector(selector: str):
+    return ("" if selector.startswith(".") else ".") + selector
+
+
+def append_selector(command: str, selector: str):
+    if command == "":
+        return standalone_selector(selector)
+    if selector_pattern.fullmatch(command.split("|")[-1]):
+        return command + selector
+    return command + " | " + standalone_selector(selector)
 
 
 class Jq:
@@ -50,7 +93,7 @@ class Jq:
                 if data is None:
                     result.put(JqResult("null", None))
                 else:
-                    result.put(JqResult("", to_table_content(data)))
+                    result.put(JqResult("", json_to_table(data)))
             else:
                 result.put(JqResult(res.stderr.decode("utf8"), None))
         except BaseException as e:
