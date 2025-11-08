@@ -241,7 +241,7 @@ class JsonCellFormatter(CellFormatter[TableCell]):
         width = self.final_width(max_width)
 
         def leading_underscores(pos: Point, width: int):
-            if width > 1:
+            if False and not force_left and width > 1:
                 region.chgat(
                     pos,
                     width - 1,
@@ -274,7 +274,7 @@ class JsonCellFormatter(CellFormatter[TableCell]):
 
                 if (int_pad := integer_width - integer_digits(v)) >= 0:
                     pad = Point(
-                        0, (v >= 0 and self.negative) + (not force_left) * int_pad
+                        0, 0 if force_left else (v >= 0 and self.negative) + int_pad
                     )
                     if isinstance(v, int):
                         region.insstr(
