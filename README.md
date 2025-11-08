@@ -92,7 +92,8 @@ tail -f tjex.log
 * When applying transformations, try to keep the cursor position
 * Improve performance / support larger data sets.
   The limiting factor should be the call to jq, not the python code.
-  * Option to abort current `update` call
+  * Option to abort switch from prompt to table.
+    Currently, tjex waits for the jq call to finish and there is no way to abort.
   * Toggle between global / local formatting
 * `--watch` option to automatically re-run filter.
   Probably using [watchdog](https://github.com/gorakhargosh/watchdog).
