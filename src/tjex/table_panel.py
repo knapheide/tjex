@@ -62,7 +62,9 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
 
         self.offsets = [0]
         for formatter in table.col_formatters[1:]:
-            self.offsets.append(self.offsets[-1] + formatter.final_width(self.max_cell_width) + 1)
+            self.offsets.append(
+                self.offsets[-1] + formatter.final_width(self.max_cell_width) + 1
+            )
 
         if not table.col_formatters:
             return
@@ -159,7 +161,9 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
         if self.table.col_keys:
             self.content_window.chgat(
                 Point(self.cursor.y, self.offsets[self.cursor.x]),
-                self.table.col_formatters[self.cursor.x + 1].final_width(self.max_cell_width),
+                self.table.col_formatters[self.cursor.x + 1].final_width(
+                    self.max_cell_width
+                ),
                 a,
             )
 
@@ -173,15 +177,12 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
             return
 
         if (
-            self.offsets[self.cursor.x]
-            + table.col_formatters[self.cursor.x].final_width(self.max_cell_width)
-            > self.content_window.width + self.content_window.content_base.x
+            self.offsets[self.cursor.x + 1]
+            >= self.content_window.width + self.content_window.content_base.x
         ):
             self.content_window.content_base = replace(
                 self.content_window.content_base,
-                x=self.offsets[self.cursor.x]
-                + table.col_formatters[self.cursor.x].final_width(self.max_cell_width)
-                - self.content_window.width,
+                x=self.offsets[self.cursor.x + 1] - 1 - self.content_window.width,
             )
         if self.offsets[self.cursor.x] < self.content_window.content_base.x:
             self.content_window.content_base = replace(
