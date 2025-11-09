@@ -1,316 +1,15 @@
 from __future__ import annotations
 
 import curses
-import json
-import re
-from abc import ABC
-from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from math import log10
-from typing import Self, override
+from typing import Generic, Self, override
 
 from tjex.config import config
 from tjex.curses_helper import WindowRegion
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
 from tjex.point import Point
+from tjex.table import T_Cell, T_Key, Table
 from tjex.utils import TjexError
-
-
-@dataclass(frozen=True)
-class Undefined:
-    pass
-
-
-type Json = str | int | float | bool | list[Json] | dict[str, Json] | None
-
-
-class TableEntry(ABC):
-    pass
-
-
-@dataclass
-class StringEntry(TableEntry):
-    s: str
-    color: int | None = None
-    fixed_width: bool = False
-    attr: int = 0
-
-
-@dataclass
-class NumberEntry(TableEntry):
-    v: int | float
-
-
-def integer_digits(v: int | float):
-    if int(abs(v)) == 0:
-        return 1
-    return int(log10(int(abs(v)))) + 1
-
-
-def integer_chars(v: int | float):
-    return integer_digits(v) + (v < 0)
-
-
-class ColumnFormatter:
-    def __init__(self, max_width: int | None, entries: Iterable[TableEntry]):
-        min_scientific_width = 7
-        min_width = 1
-        full_width = 1
-        integer_width = 1
-        fraction_width = None
-        for entry in entries:
-            match entry:
-                case StringEntry():
-                    full_width = max(full_width, len(entry.s))
-                    if entry.fixed_width:
-                        min_width = max(min_width, len(entry.s))
-                case NumberEntry(v):
-                    integer_width = max(integer_width, integer_chars(v))
-                    if isinstance(v, float):
-                        min_width = max(min_width, min_scientific_width)
-                        if fraction_width is None:
-                            fraction_width = 1
-                        if v != 0.0:
-                            fraction_width = max(
-                                fraction_width,
-                                config.float_precision + integer_digits(v),
-                            )
-                case _:
-                    pass
-        full_width = max(full_width, integer_width + 1 + (fraction_width or -1))
-        if max_width is None:
-            max_width = full_width
-        if max_width < integer_width + 1 + (fraction_width or -1):
-            fraction_width = None
-        if max_width < integer_width:
-            integer_width = max_width
-            min_width = max(min_width, min_scientific_width)
-        self.min_width: int = min_width
-        self.full_width: int = full_width
-        self.width: int = max(min_width, min(max_width, full_width))
-        self.integer_width: int = integer_width
-        self.fraction_width: int | None = fraction_width
-
-    def draw(
-        self,
-        window: WindowRegion,
-        pos: Point,
-        entry: TableEntry,
-        attr: int = 0,
-        force_left: bool = False,
-    ):
-        def leading_underscores(pos: Point, width: int):
-            if width > 1:
-                window.chgat(
-                    pos,
-                    width - 1,
-                    curses.color_pair(curses.COLOR_BLUE)
-                    | curses.A_DIM
-                    | curses.A_UNDERLINE
-                    | attr,
-                )
-
-        match entry:
-            case StringEntry():
-                s = entry.s
-                if len(s) > self.width:
-                    s = s[: self.width - 1] + "…"
-                window.insstr(
-                    pos,
-                    s,
-                    entry.attr
-                    | (0 if entry.color is None else curses.color_pair(entry.color))
-                    | attr,
-                )
-            case NumberEntry(v):
-                if isinstance(v, int) and integer_chars(v) <= self.integer_width:
-                    if force_left:
-                        window.insstr(
-                            pos,
-                            str(v),
-                            curses.color_pair(curses.COLOR_BLUE) | attr,
-                        )
-                    else:
-                        window.insstr(
-                            pos,
-                            f"{{:{self.integer_width}d}}".format(v),
-                            curses.color_pair(curses.COLOR_BLUE) | attr,
-                        )
-                        leading_underscores(pos, self.integer_width - integer_chars(v))
-                elif self.fraction_width is None:
-                    window.insstr(
-                        pos,
-                        f"{{:.{min(config.float_precision, self.width-6)}e}}".format(v),
-                        curses.color_pair(curses.COLOR_BLUE) | attr,
-                    )
-                else:
-                    fraction_width = max(
-                        1,
-                        min(
-                            self.fraction_width,
-                            config.float_precision - integer_digits(v),
-                        ),
-                    )
-                    window.insstr(
-                        pos,
-                        f"{{:{self.integer_width + 1 + fraction_width}.{fraction_width}f}}".format(
-                            v
-                        ),
-                        curses.color_pair(curses.COLOR_BLUE) | attr,
-                    )
-                    leading_underscores(pos, self.integer_width - integer_chars(v))
-
-            case _:
-                pass
-
-
-type TableKey = str | int | Undefined
-type TableContent = dict[TableKey, dict[TableKey, TableEntry]]
-
-
-def to_table_entry(v: Json | Undefined) -> TableEntry:
-    match v:
-        case False:
-            return StringEntry("false", curses.COLOR_RED, True)
-        case True:
-            return StringEntry("true", curses.COLOR_GREEN, True)
-        case float() | int():
-            return NumberEntry(v)
-        case "":
-            return StringEntry('""', attr=curses.A_DIM)
-        case str():
-            encoded = json.dumps(v)
-            if v != encoded[1:-1]:
-                v = encoded
-            return StringEntry(v)
-        case []:
-            return StringEntry(
-                "[]",
-                curses.COLOR_MAGENTA,
-                True,
-                curses.A_DIM,
-            )
-        case list():
-            return StringEntry("[…]", curses.COLOR_MAGENTA, True)
-        case dict() if not v:
-            return StringEntry(
-                "{}",
-                curses.COLOR_MAGENTA,
-                True,
-                curses.A_DIM,
-            )
-        case dict():
-            return StringEntry("{…}", curses.COLOR_MAGENTA, True)
-        case None:
-            return StringEntry("null", curses.COLOR_YELLOW, True, curses.A_DIM)
-        case Undefined():
-            return StringEntry("")
-
-
-def to_dict(v: Json) -> dict[TableKey, TableEntry]:
-    match v:
-        case list():
-            return {
-                Undefined(): to_table_entry(v),
-                **{i: to_table_entry(v) for i, v in enumerate(v)},
-            }
-        case dict():
-            return {
-                Undefined(): to_table_entry(v),
-                **{k: to_table_entry(v) for k, v in v.items()},
-            }
-        case _:
-            return {Undefined(): to_table_entry(v)}
-
-
-def to_table_content(
-    v: Json,
-) -> TableContent:
-    match v:
-        case list():
-            return {i: to_dict(v) for i, v in enumerate(v)}
-        case dict():
-            return {k: to_dict(v) for k, v in v.items()}
-        case _:
-            return {Undefined(): to_dict(v)}
-
-
-identifier_pattern = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*")
-
-
-def key_to_selector(key: TableKey):
-    match key:
-        case Undefined():
-            return ""
-        case str() if identifier_pattern.fullmatch(key):
-            return f".{key}"
-        case _:
-            return f"[{json.dumps(key)}]"
-
-
-def compare_prefix_len(base: str | None, a: str, b: str):
-    if base is None:
-        return True
-    for i, c in enumerate(base):
-        if i >= len(a) or a[i] != c:
-            return False
-        if i >= len(b) or b[i] != c:
-            return True
-    return True
-
-
-def merge_keys(a_set: set[str], a: list[str], b: list[str]):
-    b_set = set(b)
-    ia, ib = (0, 0)
-    # Using a dict because it preserves insertion order
-    res: dict[str, None] = {}
-    prev_key = None
-    while True:
-        if ia >= len(a):
-            return list(res.keys()) + b[ib:]
-        if ib >= len(b):
-            return list(res.keys()) + a[ia:]
-
-        if a[ia] in res:
-            ia += 1
-        elif b[ib] in res:
-            ib += 1
-        elif a[ia] == b[ib]:
-            res[a[ia]] = None
-            prev_key = a[ia]
-            ia += 1
-            ib += 1
-        elif b[ib] in a_set:
-            res[a[ia]] = None
-            prev_key = a[ia]
-            ia += 1
-        elif a[ia] in b_set:
-            res[b[ib]] = None
-            prev_key = b[ib]
-            ib += 1
-        elif compare_prefix_len(prev_key, a[ia], b[ib]):
-            res[a[ia]] = None
-            prev_key = a[ia]
-            ia += 1
-        else:
-            res[b[ib]] = None
-            prev_key = b[ib]
-            ib += 1
-
-
-def collect_keys(entries: Iterable[Iterable[TableKey]]):
-    undefined = set[Undefined]()
-    keys_set = set[str]()
-    keys_order: list[str] = []
-    max_len = 0
-    for entry in entries:
-        undefined.update({key for key in entry if isinstance(key, Undefined)})
-        max_len = max([max_len, *(key + 1 for key in entry if isinstance(key, int))])
-        str_keys = [key for key in entry if isinstance(key, str)]
-        if any(key not in keys_set for key in str_keys):
-            keys_order = merge_keys(keys_set, keys_order, str_keys)
-            keys_set.update(str_keys)
-    return [*undefined, *keys_order, *range(max_len)]
 
 
 class TableEmptyError(TjexError):
@@ -324,19 +23,15 @@ class TableState:
     content_base: Point
 
 
-class TablePanel(Panel):
+class TablePanel(Panel, Generic[T_Key, T_Cell]):
     bindings: KeyBindings[Self, Event | None] = KeyBindings()
 
     def __init__(self, window: WindowRegion):
         self.window: WindowRegion = window
         self._max_cell_width: int | None = None
         self.full_cell_width: bool = False
-        self.content: TableContent = {}
-        self.col_keys: list[TableKey] = []
-        self.col_formatters: list[ColumnFormatter] = []
-        self.row_keys: list[TableKey] = []
+        self.table: Table[T_Key, T_Cell] = Table({}, [], [], [], [], [])
         self.offsets: list[int] = []
-        self.row_header_formatter: ColumnFormatter = ColumnFormatter(None, [])
         self.content_offset: Point = Point(1, 0)
         self.cursor: Point = Point(0, 0)
         self.content_window: WindowRegion = WindowRegion(self.window.window)
@@ -356,41 +51,25 @@ class TablePanel(Panel):
         self.content_window.pos = self.content_offset + self.window.pos
         self.content_window.size = self.window.size - self.content_offset
 
-    @dataclass
-    class Select(Event):
-        selector: str
-
     @property
     def max_cell_width(self):
         if self.full_cell_width:
             return None
         return self._max_cell_width or config.max_cell_width
 
-    def update(self, content: TableContent, state: TableState | None):
-        self.content = content
-
-        self.col_keys = collect_keys(r.keys() for r in self.content.values())
-        self.row_keys = collect_keys([r] for r in self.content.keys())
-
-        self.col_formatters = [
-            ColumnFormatter(
-                self.max_cell_width,
-                [to_table_entry(c), *(r[c] for r in self.content.values() if c in r)],
-            )
-            for c in self.col_keys
-        ]
+    def update(self, table: Table[T_Key, T_Cell], state: TableState | None):
+        self.table = table
 
         self.offsets = [0]
-        for width in self.col_formatters:
-            self.offsets.append(self.offsets[-1] + width.width + 1)
+        for formatter in table.col_formatters[1:]:
+            self.offsets.append(self.offsets[-1] + formatter.final_width(self.max_cell_width) + 1)
 
-        self.row_header_formatter = ColumnFormatter(
-            self.max_cell_width,
-            [to_table_entry(r) for r in self.row_keys],
-        )
+        if not table.col_formatters:
+            return
+
         self.content_offset = Point(
             1,
-            self.row_header_formatter.width + 1,
+            table.col_formatters[0].final_width(self.max_cell_width) + 1,
         )
         self.resize()
         if state is not None:
@@ -407,6 +86,8 @@ class TablePanel(Panel):
 
     @override
     def draw(self):
+        table = self.table
+
         col_range = range(
             max(
                 0,
@@ -434,64 +115,72 @@ class TablePanel(Panel):
             self.content_window.content_base.y,
             min(
                 self.content_window.content_base.y + self.content_window.height,
-                len(self.row_keys),
+                len(table.row_keys),
             ),
         )
 
         for i in col_range:
-            self.col_formatters[i].draw(
+            table.col_formatters[i + 1].draw(
+                table.col_headers[i],
                 self.col_header_window,
                 Point(0, self.offsets[i]),
-                to_table_entry(self.col_keys[i]),
+                self.max_cell_width,
                 curses.A_BOLD,
-                force_left=True,
+                True,
             )
 
         for i in row_range:
-            self.row_header_formatter.draw(
+            table.col_formatters[0].draw(
+                table.row_headers[i],
                 self.row_header_window,
                 Point(i, 0),
-                to_table_entry(self.row_keys[i]),
+                self.max_cell_width,
                 curses.A_BOLD,
+                False,
             )
 
         for i in row_range:
             for j in col_range:
-                entry = self.content[self.row_keys[i]].get(self.col_keys[j], None)
-                if entry is not None:
-                    self.col_formatters[j].draw(
+                cell = table.content[table.row_keys[i]].get(table.col_keys[j], None)
+                if cell is not None:
+                    table.col_formatters[j + 1].draw(
+                        cell,
                         self.content_window,
                         Point(i, self.offsets[j]),
-                        entry,
+                        self.max_cell_width,
+                        0,
+                        False,
                     )
 
         if self.active:
             self.chgat_cursor(curses.A_REVERSE)
 
     def chgat_cursor(self, a: int):
-        if len(self.col_formatters) > 0:
+        if self.table.col_keys:
             self.content_window.chgat(
                 Point(self.cursor.y, self.offsets[self.cursor.x]),
-                self.col_formatters[self.cursor.x].width,
+                self.table.col_formatters[self.cursor.x + 1].final_width(self.max_cell_width),
                 a,
             )
 
     def clamp_cursor(self):
+        table = self.table
         self.cursor = Point(
-            max(0, min(len(self.row_keys) - 1, self.cursor.y)),
-            max(0, min(len(self.col_keys) - 1, self.cursor.x)),
+            max(0, min(len(table.row_keys) - 1, self.cursor.y)),
+            max(0, min(len(table.col_keys) - 1, self.cursor.x)),
         )
-        if not self.col_keys:
+        if not table.col_keys:
             return
 
         if (
-            self.offsets[self.cursor.x] + self.col_formatters[self.cursor.x].width
+            self.offsets[self.cursor.x]
+            + table.col_formatters[self.cursor.x].final_width(self.max_cell_width)
             > self.content_window.width + self.content_window.content_base.x
         ):
             self.content_window.content_base = replace(
                 self.content_window.content_base,
                 x=self.offsets[self.cursor.x]
-                + self.col_formatters[self.cursor.x].width
+                + table.col_formatters[self.cursor.x].final_width(self.max_cell_width)
                 - self.content_window.width,
             )
         if self.offsets[self.cursor.x] < self.content_window.content_base.x:
@@ -540,38 +229,19 @@ class TablePanel(Panel):
 
     @property
     def row_key(self):
-        if not self.row_keys:
+        if not self.table.row_keys:
             raise TableEmptyError()
-        return self.row_keys[self.cursor.y]
+        return self.table.row_keys[self.cursor.y]
 
     @property
     def col_key(self):
-        if not self.col_keys:
+        if not self.table.col_keys:
             raise TableEmptyError()
-        return self.col_keys[self.cursor.x]
+        return self.table.col_keys[self.cursor.x]
 
     @property
-    def cell_selector(self):
-        try:
-            return key_to_selector(self.row_key) + key_to_selector(self.col_key)
-        except KeyError:
-            return None
-
-    @bindings.add("\n")
-    def enter_cell(self):
-        """Enter highlighted cell by appending selector to jq prompt"""
-        if (selector := self.cell_selector) is not None:
-            return self.Select(selector)
-        else:
-            pass
-
-    @bindings.add("M-\n")
-    def enter_row(self):
-        """Enter highlighted cell's row by appending selector to jq prompt"""
-        try:
-            return self.Select(key_to_selector(self.row_keys[self.cursor.y]))
-        except KeyError:
-            pass
+    def cell_keys(self):
+        return (self.row_key, self.col_key)
 
     @bindings.add("M-<")
     def first_row(self):
@@ -581,7 +251,7 @@ class TablePanel(Panel):
     @bindings.add("M->")
     def last_row(self):
         """Jump to last row"""
-        self.cursor = replace(self.cursor, y=len(self.row_keys) - 1)
+        self.cursor = replace(self.cursor, y=len(self.table.row_keys) - 1)
 
     @bindings.add("KEY_NPAGE")
     def next_page(self):
@@ -594,7 +264,7 @@ class TablePanel(Panel):
     @bindings.add("KEY_END", "C-e")
     def last_col(self):
         """Jump to last column"""
-        self.cursor = replace(self.cursor, x=len(self.col_keys) - 1)
+        self.cursor = replace(self.cursor, x=len(self.table.col_keys) - 1)
 
     @bindings.add("KEY_HOME", "C-a")
     def first_col(self):
@@ -605,13 +275,13 @@ class TablePanel(Panel):
     def full_width(self):
         """Toggle: rendering all cells with their full width vs. max_cell_width"""
         self.full_cell_width = not self.full_cell_width
-        self.update(self.content, self.state)
+        self.update(self.table, self.state)
 
     @bindings.add("+")
     def inc_width(self):
         """Increase max_cell_width by one"""
         self._max_cell_width = (self._max_cell_width or config.max_cell_width) + 1
-        self.update(self.content, self.state)
+        self.update(self.table, self.state)
 
     @bindings.add("-")
     def dec_width(self):
@@ -619,7 +289,7 @@ class TablePanel(Panel):
         self._max_cell_width = max(
             1, (self._max_cell_width or config.max_cell_width) - 1
         )
-        self.update(self.content, self.state)
+        self.update(self.table, self.state)
 
     @override
     def handle_key(self, key: KeyPress) -> list[Event]:
