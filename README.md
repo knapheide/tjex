@@ -98,5 +98,3 @@ tail -f tjex.log
   * Toggle between global / local formatting
 * `--watch` option to automatically re-run filter.
   Probably using [watchdog](https://github.com/gorakhargosh/watchdog).
-* Variable status panel height.
-  `jaq` error messages are rather big.
