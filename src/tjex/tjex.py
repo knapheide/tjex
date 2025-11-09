@@ -87,23 +87,10 @@ def tjex(
     setup_plain_colors()
 
     table = TablePanel[TableKey, TableCell](WindowRegion(stdscr))
-    prompt_head = TextEditPanel(
-        WindowRegion(stdscr),
-        "> ",
-    )
-    prompt = TextEditPanel(
-        WindowRegion(
-            stdscr,
-        ),
-        command,
-    )
-    status = TextPanel(
-        WindowRegion(
-            stdscr,
-        ),
-        "",
-    )
-    status_detail = TextPanel(WindowRegion(stdscr), "")
+    prompt_head = TextEditPanel(WindowRegion(stdscr), "> ")
+    prompt = TextEditPanel(WindowRegion(stdscr), command)
+    status = TextPanel(WindowRegion(stdscr), "")
+    status_detail = TextPanel(WindowRegion(stdscr), "", clear_first=True)
     status_detail.attr = curses.A_DIM
     panels = [table, prompt_head, prompt, status, status_detail]
 
@@ -147,7 +134,10 @@ def tjex(
         nonlocal current_command
         match jq.status(block):
             case JqResult(msg, content):
-                set_status(msg)
+                if msg == "...":
+                    status.content = msg
+                else:
+                    set_status(msg)
                 if content is not None and jq.command is not None:
                     table_cursor_history[current_command] = table.state
                     current_command = jq.command

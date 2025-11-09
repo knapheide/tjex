@@ -4,7 +4,7 @@ from abc import ABC
 from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
-from math import ceil, log10
+from math import log10
 from typing import override
 
 from tjex.config import config
