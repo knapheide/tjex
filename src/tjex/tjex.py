@@ -135,6 +135,7 @@ def tjex(
         match jq.status(block):
             case JqResult(msg, content):
                 if msg == "...":
+                    # If result is pending, don't clear previous error message
                     status.content = msg
                 else:
                     set_status(msg)
