@@ -14,9 +14,11 @@ from tjex.point import Point
 
 
 class TextPanel(Panel):
-    def __init__(self, window: WindowRegion, content: str):
+    def __init__(self, window: WindowRegion, content: str, clear_first: bool = False):
         self.window: WindowRegion = window
         self.content: str = content
+        self.attr: int = 0
+        self.clear_first: bool = clear_first
 
     @override
     def handle_key(self, key: KeyPress):
@@ -24,8 +26,11 @@ class TextPanel(Panel):
 
     @override
     def draw(self):
+        if self.clear_first:
+            for i in range(self.window.height):
+                self.window.insstr(Point(i, 0), self.window.width * " ")
         for i, s in enumerate(self.content.splitlines()):
-            self.window.insstr(Point(i, 0), s)
+            self.window.insstr(Point(i, 0), s, self.attr)
 
 
 @dataclass(frozen=True)

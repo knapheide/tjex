@@ -10,7 +10,7 @@ import subprocess as sp
 import sys
 import time
 from contextlib import ExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from multiprocessing import set_start_method
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -87,26 +87,15 @@ def tjex(
     setup_plain_colors()
 
     table = TablePanel[TableKey, TableCell](WindowRegion(stdscr))
-    prompt_head = TextEditPanel(
-        WindowRegion(stdscr),
-        "> ",
-    )
-    prompt = TextEditPanel(
-        WindowRegion(
-            stdscr,
-        ),
-        command,
-    )
-    status = TextPanel(
-        WindowRegion(
-            stdscr,
-        ),
-        "",
-    )
-    panels = [table, prompt_head, prompt, status]
+    prompt_head = TextEditPanel(WindowRegion(stdscr), "> ")
+    prompt = TextEditPanel(WindowRegion(stdscr), command)
+    status = TextPanel(WindowRegion(stdscr), "")
+    status_detail = TextPanel(WindowRegion(stdscr), "", clear_first=True)
+    status_detail.attr = curses.A_DIM
+    panels = [table, prompt_head, prompt, status, status_detail]
 
     def resize():
-        status_height = 2
+        status_height = 1
         screen_size = Point(*stdscr.getmaxyx())
         table.window.pos = Point(0, 0)
         table.window.size = screen_size - Point(3, 0)
@@ -116,6 +105,10 @@ def tjex(
         prompt.window.size = Point(1, screen_size.x - 2)
         status.window.pos = Point(screen_size.y - status_height, 0)
         status.window.size = Point(status_height, screen_size.x)
+        status_detail.window.size = replace(status_detail.window.size, x=screen_size.x)
+        status_detail.window.pos = Point(
+            screen_size.y - status_height - 1 - status_detail.window.height, 0
+        )
         for panel in panels:
             panel.resize()
 
@@ -125,11 +118,27 @@ def tjex(
     current_command: str = command
     table_cursor_history: dict[str, TableState] = {}
 
-    def update_status(block: bool = False):
+    def set_status(msg: str):
+        logger.debug(msg)
+        lines = msg.splitlines()
+        status.content = "\n".join(lines[:1])
+        if len(lines) <= 1:
+            status_detail.window.size = replace(status_detail.window.size, y=0)
+            status_detail.content = ""
+        else:
+            status_detail.window.size = replace(status_detail.window.size, y=len(lines))
+            status_detail.content = "\n".join(lines)
+        resize()
+
+    def update_jq_status(block: bool = False):
         nonlocal current_command
         match jq.status(block):
             case JqResult(msg, content):
-                status.content = msg
+                if msg == "...":
+                    # If result is pending, don't clear previous error message
+                    status.content = msg
+                else:
+                    set_status(msg)
                 if content is not None and jq.command is not None:
                     table_cursor_history[current_command] = table.state
                     current_command = jq.command
@@ -148,7 +157,7 @@ def tjex(
     def toggle_active(_: None):  # pyright: ignore[reportUnusedFunction]
         """Toggle active panel between prompt and table"""
         if active_cycle[0] == prompt:
-            update_status(block=True)  # pyright: ignore[reportUnusedCallResult]
+            update_jq_status(block=True)  # pyright: ignore[reportUnusedCallResult]
         if active_cycle[0] != prompt or jq.latest_status.table is not None:
             active_cycle.append(active_cycle.pop(0))
             active_cycle[-1].set_active(False)
@@ -296,18 +305,18 @@ def tjex(
                         case Quit():
                             return 0
                         case StatusUpdate(msg):
-                            status.content = msg
+                            set_status(msg)
                         case KeyPress("KEY_RESIZE"):
                             resize()
                         case _:
                             pass
             except TjexError as e:
-                status.content = e.msg
+                set_status(e.msg)
             jq.update(prompt.content)
             redraw = True
             continue
 
-        if update_status() or redraw:
+        if update_jq_status() or redraw:
             stdscr.erase()
             for panel in panels:
                 panel.draw()
