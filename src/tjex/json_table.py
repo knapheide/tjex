@@ -3,7 +3,8 @@ import json
 from abc import ABC
 from collections.abc import Iterable
 from dataclasses import dataclass
-from math import log10
+from decimal import Decimal
+from math import ceil, log10
 from typing import override
 
 from tjex.config import config
@@ -182,8 +183,6 @@ def integer_digits(v: int | float):
 
 class JsonCellFormatter(CellFormatter[TableCell]):
     def __init__(self, cells: Iterable[TableCell]):
-        min_scientific_width = 7
-
         # For StringCells
         min_width = 1
         full_width = 1
@@ -192,6 +191,7 @@ class JsonCellFormatter(CellFormatter[TableCell]):
         negative = False
         integer_width = 1
         fraction_width = None
+        exponent_width = 2
 
         for cell in cells:
             match cell:
@@ -202,6 +202,9 @@ class JsonCellFormatter(CellFormatter[TableCell]):
                 case NumberCell(v):
                     if v < 0:
                         negative = True
+                    exponent_width = max(
+                        exponent_width, integer_digits(integer_digits(v))
+                    )
                     integer_width = max(integer_width, integer_digits(v))
                     if isinstance(v, float):
                         if fraction_width is None:
@@ -217,12 +220,11 @@ class JsonCellFormatter(CellFormatter[TableCell]):
         self.negative: bool = negative
         self.integer_width: int = integer_width
         self.fraction_width: int | None = fraction_width
+        self.exponent_width: int = exponent_width
         self.min_width: int = max(
             min_width,
             negative
-            + min(
-                integer_width + 2 * (fraction_width is not None), min_scientific_width
-            ),
+            + min(integer_width + 2 * (fraction_width is not None), 5 + exponent_width),
         )
         self.width: int = max(
             full_width, negative + integer_width + 1 + (fraction_width or -1)
@@ -241,7 +243,7 @@ class JsonCellFormatter(CellFormatter[TableCell]):
         width = self.final_width(max_width)
 
         def leading_underscores(pos: Point, width: int):
-            if False and not force_left and width > 1:
+            if not force_left and width > 1:
                 region.chgat(
                     pos,
                     width - 1,
@@ -301,11 +303,14 @@ class JsonCellFormatter(CellFormatter[TableCell]):
                         self.negative + integer_width - (v < 0) - integer_digits(v),
                     )
                 else:
+                    fmt = f"{{:1.{min(config.float_precision, width-self.negative-4-self.exponent_width)}e}}"
+                    try:
+                        s = fmt.format(v)
+                    except OverflowError:
+                        s = fmt.format(Decimal(v))
                     region.insstr(
                         pos + Point(0, (v >= 0 and self.negative) + 0),
-                        f"{{:.{min(config.float_precision, width-self.negative-6)}e}}".format(
-                            v
-                        ),
+                        s,
                         curses.color_pair(curses.COLOR_BLUE) | attr,
                     )
 
