@@ -81,6 +81,7 @@ tail -f tjex.log
 * Transpose `TablePanel` (without changing the underlying data)
 * Configurable number formatting
   * More precision for small numbers
+  * Hexadecimal integers
 * Raw view
 * Better demo picture / animation in README
 * Per-panel dirty flag
