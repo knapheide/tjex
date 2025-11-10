@@ -9,7 +9,7 @@ from multiprocessing import Process, Queue, get_start_method
 from pathlib import Path
 from queue import Empty
 
-from tjex.config import config
+from tjex.config import Config, config
 from tjex.json_table import Json, TableCell, TableKey, Undefined, json_to_table
 from tjex.table import Table
 from tjex.utils import TjexError
@@ -82,7 +82,10 @@ class Jq:
         )
 
     @staticmethod
-    def run(command: list[str], result: Queue[JqResult]):
+    def run(command: list[str], result: Queue[JqResult], _config: Config):
+        # Update global config in subprocess
+        for k, v in vars(_config).items():
+            setattr(config, k, v)
         try:
             res = sp.run(
                 command,
@@ -119,6 +122,7 @@ class Jq:
                         *self.file,
                     ],
                     self.result,
+                    config,
                 ),
             )
             self.process.start()

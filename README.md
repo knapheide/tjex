@@ -98,3 +98,4 @@ tail -f tjex.log
   * Toggle between global / local formatting
 * `--watch` option to automatically re-run filter.
   Probably using [watchdog](https://github.com/gorakhargosh/watchdog).
+* Cleaner way to get up-to-date config into subprocess
