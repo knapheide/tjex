@@ -2,7 +2,7 @@
 
 Navigate through complex json files by interactively building up a [jq](https://jqlang.org) filter.
 
-![demo image](doc/demo.png)
+![demo gif](demo/demo.gif)
 
 ## Usage
 
@@ -81,7 +81,6 @@ tail -f tjex.log
   * More precision for small numbers
   * Hexadecimal integers
 * Raw view
-* Better demo picture / animation in README
 * Per-panel dirty flag
 * Status message animation (for pending jq process)
 * Nix flake
