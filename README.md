@@ -74,8 +74,6 @@ tail -f tjex.log
 
 ## TODO
 * Separate persistent command history for TextEditPanel
-* Mini history just for the table view
-  * ESC to go one level up / return to the prompt
 * Multi-line cells
 * Kill ring for TextEditPanel
 * Transpose `TablePanel` (without changing the underlying data)
@@ -90,7 +88,6 @@ tail -f tjex.log
 * Plain-text search in table
 * Publish to PyPI
 * CI
-* When applying transformations, try to keep the cursor position
 * Improve performance / support larger data sets.
   The limiting factor should be the call to jq, not the python code.
   * Option to abort switch from prompt to table.

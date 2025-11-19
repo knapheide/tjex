@@ -22,6 +22,14 @@ class TableState:
     cursor: Point
     content_base: Point
 
+    @property
+    def row_only(self):
+        return TableState(replace(self.cursor, x=0), replace(self.content_base, x=0))
+
+    @property
+    def col_only(self):
+        return TableState(replace(self.cursor, y=0), replace(self.content_base, y=0))
+
 
 class TablePanel(Panel, Generic[T_Key, T_Cell]):
     bindings: KeyBindings[Self, Event | None] = KeyBindings()
@@ -77,6 +85,7 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
         if state is not None:
             self.cursor = state.cursor
             self.content_window.content_base = state.content_base
+            self.clamp_cursor()
         else:
             self.cursor = Point(0, 0)
             self.content_window.content_base = Point(0, 0)

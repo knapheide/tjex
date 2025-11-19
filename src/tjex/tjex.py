@@ -208,13 +208,19 @@ def tjex(
             loaded_config.do_copy(json.dumps(content))
         return StatusUpdate("Copied.")
 
+    def prompt_append(command: str, cursor: TableState | None = None):
+        new_prompt = append_filter(prompt.content, command)
+        if cursor is not None:
+            table_cursor_history[new_prompt] = cursor
+        prompt.update(new_prompt)
+
     @table.bindings.add("E")
     def expand_row(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Expand the selected row"""
         key = table.row_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt.update(append_filter(prompt.content, f"expand({json.dumps(key)})"))
+        prompt_append(f"expand({json.dumps(key)})", table.state)
 
     @table.bindings.add("e")
     def expand_col(_: Any):  # pyright: ignore[reportUnusedFunction]
@@ -222,9 +228,7 @@ def tjex(
         key = table.col_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt.update(
-            append_filter(prompt.content, f"map_values(expand({json.dumps(key)}))")
-        )
+        prompt_append(f"map_values(expand({json.dumps(key)}))", table.state)
 
     @table.bindings.add("K")
     def delete_row(_: Any):  # pyright: ignore[reportUnusedFunction]
@@ -232,11 +236,7 @@ def tjex(
         key = table.row_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt.update(
-            append_filter(
-                prompt.content, f"del({standalone_selector(key_to_selector(key))})"
-            )
-        )
+        prompt_append(f"del({standalone_selector(key_to_selector(key))})", table.state)
 
     @table.bindings.add("k")
     def delete_col(_: Any):  # pyright: ignore[reportUnusedFunction]
@@ -244,11 +244,8 @@ def tjex(
         key = table.col_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt.update(
-            append_filter(
-                prompt.content,
-                f"map_values(del({standalone_selector(key_to_selector(key))}))",
-            )
+        prompt_append(
+            f"map_values(del({standalone_selector(key_to_selector(key))}))", table.state
         )
 
     @table.bindings.add("m")
@@ -257,11 +254,9 @@ def tjex(
         key = table.col_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt.update(
-            append_filter(
-                prompt.content,
-                f"map_values({standalone_selector(key_to_selector(key))})",
-            )
+        prompt_append(
+            f"map_values({standalone_selector(key_to_selector(key))})",
+            table.state.row_only,
         )
 
     @table.bindings.add("s")
@@ -275,11 +270,9 @@ def tjex(
         if key == Undefined():
             prompt.update(append_filter(prompt.content, f"sort"))
         else:
-            prompt.update(
-                append_filter(
-                    prompt.content,
-                    f"sort_by({standalone_selector(key_to_selector(key))})",
-                )
+            prompt_append(
+                f"sort_by({standalone_selector(key_to_selector(key))})",
+                table.state.col_only,
             )
 
     load_config(
