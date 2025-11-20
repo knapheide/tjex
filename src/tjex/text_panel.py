@@ -9,6 +9,7 @@ from typing import Self, override
 from tjex.config import config
 from tjex.curses_helper import WindowRegion
 from tjex.history import History
+from tjex.kill_ring import KillRing
 from tjex.panel import Event, KeyBindings, KeyPress, Panel, StatusUpdate
 from tjex.point import Point
 
@@ -48,6 +49,9 @@ class TextEditPanel(Panel):
         self.content: str = content
         self.cursor: int = len(content)
         self.history: History[TextEditPanelState] = History(self.state)
+        self.kill_ring: KillRing = KillRing()
+        # If the last command was yank or rotate, the position where that yank started, None otherwise
+        self.yank_start: int | None = None
 
     def next_word(self):
         next_cursor = self.cursor
@@ -73,14 +77,20 @@ class TextEditPanel(Panel):
             next_cursor -= 1
         return next_cursor + 1
 
-    def delete(self, until: int):
+    def delete(self, until: int, kill: bool = False):
         until = max(0, min(until, len(self.content)))
+        if kill:
+            self.kill_ring.kill(
+                self.content[min(self.cursor, until) : max(self.cursor, until)],
+                prepend=self.cursor > until,
+            )
         self.update(
             TextEditPanelState(
                 self.content[: min(self.cursor, until)]
                 + self.content[max(self.cursor, until) :],
                 min(until, self.cursor),
-            )
+            ),
+            killing=kill,
         )
 
     @bindings.add("C-_")
@@ -100,7 +110,7 @@ class TextEditPanel(Panel):
     @bindings.add("C-k")
     def kill_line(self):
         """Delete everything to the right of the cursor"""
-        self.delete(len(self.content))
+        self.delete(len(self.content), kill=True)
 
     @bindings.add("KEY_DC", "C-d")
     def delete_next_char(self):
@@ -108,7 +118,7 @@ class TextEditPanel(Panel):
 
     @bindings.add("M-KEY_DC", "M-d", "C-<delete>")
     def delete_next_word(self):
-        self.delete(self.next_word())
+        self.delete(self.next_word(), kill=True)
 
     @bindings.add("KEY_BACKSPACE")
     def delete_prev_char(self):
@@ -116,31 +126,67 @@ class TextEditPanel(Panel):
 
     @bindings.add("M-KEY_BACKSPACE", "C-<backspace>")
     def delete_prev_word(self):
-        self.delete(self.prev_word())
+        self.delete(self.prev_word(), kill=True)
 
     @bindings.add("KEY_RIGHT", "C-f")
     def forward_char(self):
+        self.kill_ring.kill_done()
+        self.yank_start = None
         self.set_cursor(self.cursor + 1)
 
     @bindings.add("M-KEY_RIGHT", "C-<right>", "M-<right>", "M-f")
     def forward_word(self):
+        self.kill_ring.kill_done()
+        self.yank_start = None
         self.set_cursor(self.next_word())
 
     @bindings.add("KEY_LEFT", "C-b")
     def backward_char(self):
+        self.kill_ring.kill_done()
+        self.yank_start = None
         self.set_cursor(max(self.cursor - 1, 0))
 
     @bindings.add("M-KEY_LEFT", "C-<left>", "M-<left>", "M-b")
     def backward_word(self):
+        self.kill_ring.kill_done()
+        self.yank_start = None
         self.set_cursor(self.prev_word())
 
     @bindings.add("KEY_END", "C-e")
     def end(self):
+        self.kill_ring.kill_done()
+        self.yank_start = None
         self.set_cursor(len(self.content))
 
     @bindings.add("KEY_HOME", "C-a")
     def home(self):
+        self.kill_ring.kill_done()
+        self.yank_start = None
         self.set_cursor(0)
+
+    @bindings.add("C-y")
+    def yank(self):
+        pre = self.content[: self.cursor] + self.kill_ring.yank()
+        self.yank_start = self.cursor
+        self.update(
+            TextEditPanelState(
+                pre + self.content[self.cursor :],
+                len(pre),
+            ),
+            yanking=True,
+        )
+
+    @bindings.add("M-y")
+    def rotate(self):
+        if self.yank_start is not None:
+            pre = self.content[: self.yank_start] + self.kill_ring.rotate()
+            self.update(
+                TextEditPanelState(
+                    pre + self.content[self.cursor :],
+                    len(pre),
+                ),
+                yanking=True,
+            )
 
     @override
     def handle_key(self, key: KeyPress) -> Iterable[Event]:
@@ -150,6 +196,8 @@ class TextEditPanel(Panel):
             case KeyPress(key_str) if (
                 len(key_str) == 1 and key_str not in "\n" and key_str.isprintable()
             ):
+                self.kill_ring.kill_done()
+                self.yank_start = None
                 self.content = (
                     self.content[: self.cursor] + key_str + self.content[self.cursor :]
                 )
@@ -178,17 +226,28 @@ class TextEditPanel(Panel):
         if self.active:
             self.window.chgat(Point(0, self.cursor), 1, curses.A_REVERSE)
 
-    def update(self, state: str | TextEditPanelState):
+    def update(
+        self,
+        state: str | TextEditPanelState,
+        killing: bool = False,
+        yanking: bool = False,
+    ):
         if isinstance(state, str):
             state = TextEditPanelState(state, len(state))
         self.history.push(self.state)
-        self.set_state(state)
+        self.set_state(state, killing=killing, yanking=yanking)
         self.history.push(self.state)
 
     @property
     def state(self):
         return TextEditPanelState(self.content, self.cursor)
 
-    def set_state(self, state: TextEditPanelState):
+    def set_state(
+        self, state: TextEditPanelState, killing: bool = False, yanking: bool = False
+    ):
+        if not killing:
+            self.kill_ring.kill_done()
+        if not yanking:
+            self.yank_start = None
         self.content = state.content
         self.set_cursor(state.cursor)

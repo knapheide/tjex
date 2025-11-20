@@ -31,6 +31,7 @@ KEY_ALIASES = {
     "M-<left>": "kLFT3",
     "C-p": "\x10",
     "C-n": "\x0e",
+    "C-y": "\x19",
 }
 
 

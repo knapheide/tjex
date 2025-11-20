@@ -75,7 +75,6 @@ tail -f tjex.log
 ## TODO
 * Separate persistent command history for TextEditPanel
 * Multi-line cells
-* Kill ring for TextEditPanel
 * Transpose `TablePanel` (without changing the underlying data)
 * Configurable number formatting
   * More precision for small numbers
