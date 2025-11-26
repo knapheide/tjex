@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import curses
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, replace
+from typing import override
 
 from tjex.logging import logger
 from tjex.point import Point
@@ -62,20 +64,8 @@ class KeyReader:
             return None
 
 
-@dataclass
-class WindowRegion:
-    window: curses.window
-    pos: Point = Point.ZERO
+class Region(ABC):
     size: Point = Point.ZERO
-    content_base: Point = Point.ZERO
-
-    @property
-    def y(self):
-        return self.pos.y
-
-    @property
-    def x(self):
-        return self.pos.x
 
     @property
     def height(self):
@@ -85,22 +75,88 @@ class WindowRegion:
     def width(self):
         return self.size.x
 
+    @abstractmethod
+    def insstr(self, pos: Point, s: str, attr: int = 0) -> None:
+        pass
+
+    @abstractmethod
+    def chgat(self, pos: Point, width: int, attr: int) -> None:
+        pass
+
+
+class DummyRegion(Region):
+    @override
+    def insstr(self, pos: Point, s: str, attr: int = 0) -> None:
+        pass
+
+    @override
+    def chgat(self, pos: Point, width: int, attr: int) -> None:
+        pass
+
+
+class WindowRegion(Region):
+    def __init__(self, window: curses.window):
+        self.window: curses.window = window
+        self.size: Point = Point(*self.window.getmaxyx())
+
+    @override
     def insstr(self, pos: Point, s: str, attr: int = 0):
-        absolute_pos = pos - self.content_base
-        if self.height > absolute_pos.y >= 0 and self.width > absolute_pos.x > -len(s):
+        if self.height > pos.y >= 0 and self.width > pos.x > -len(s):
             self.window.insstr(
-                self.y + absolute_pos.y,
-                self.x + max(0, absolute_pos.x),
-                s[max(0, -absolute_pos.x) : self.width - absolute_pos.x],
+                pos.y, max(0, pos.x), s[max(0, -pos.x) : self.width - pos.x], attr
+            )
+
+    @override
+    def chgat(self, pos: Point, width: int, attr: int):
+        if self.height > pos.y >= 0 and self.width > pos.x > -width:
+            self.window.chgat(
+                pos.y, max(0, pos.x), min(self.width, width - max(0, -pos.x)), attr
+            )
+
+
+@dataclass
+class SubRegion(Region):
+    parent: Region
+    pos: Point = Point.ZERO
+    size: Point = Point.ZERO
+
+    @property
+    def y(self):
+        return self.pos.y
+
+    @property
+    def x(self):
+        return self.pos.x
+
+    @override
+    def insstr(self, pos: Point, s: str, attr: int = 0):
+        if self.height > pos.y >= 0 and self.width > pos.x > -len(s):
+            self.parent.insstr(
+                self.pos + replace(pos, x=max(0, pos.x)),
+                s[max(0, -pos.x) : self.width - pos.x],
                 attr,
             )
 
+    @override
     def chgat(self, pos: Point, width: int, attr: int):
-        absolute_pos = pos - self.content_base
-        if self.height > absolute_pos.y >= 0 and self.width > absolute_pos.x > -width:
-            self.window.chgat(
-                self.y + absolute_pos.y,
-                self.x + max(0, absolute_pos.x),
-                min(self.width, width - max(0, -absolute_pos.x)),
+        if self.height > pos.y >= 0 and self.width > pos.x > -width:
+            self.parent.chgat(
+                self.pos + replace(pos, x=max(0, pos.x)),
+                min(self.width, width - max(0, -pos.x)),
                 attr,
             )
+
+
+class OffsetRegion(Region):
+    def __init__(self, parent: Region, offset: Point):
+        self.parent: Region = parent
+        self.size: Point = parent.size
+        self.offset: Point = offset
+
+    @override
+    def insstr(self, pos: Point, s: str, attr: int = 0):
+        self.parent.insstr(pos - self.offset, s, attr)
+
+    @override
+    def chgat(self, pos: Point, width: int, attr: int):
+        self.parent.chgat(pos - self.offset, width, attr)

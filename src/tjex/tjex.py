@@ -21,7 +21,13 @@ import argcomplete
 from tjex import logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
-from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
+from tjex.curses_helper import (
+    DummyRegion,
+    KeyReader,
+    SubRegion,
+    WindowRegion,
+    setup_plain_colors,
+)
 from tjex.jq import (
     Jq,
     JqResult,
@@ -87,30 +93,45 @@ def tjex(
     setup_plain_colors()
 
     table = TablePanel[TableKey, TableCell](WindowRegion(stdscr))
-    prompt_head = TextEditPanel(WindowRegion(stdscr), "> ")
-    prompt = TextEditPanel(WindowRegion(stdscr), command)
-    status = TextPanel(WindowRegion(stdscr), "")
-    status_detail = TextPanel(WindowRegion(stdscr), "", clear_first=True)
+    prompt_head = TextEditPanel("> ")
+    prompt = TextEditPanel(command)
+    status = TextPanel("")
+    status_detail_region = SubRegion(DummyRegion(), Point.ZERO, Point.ZERO)
+    status_detail = TextPanel("", clear_first=True)
     status_detail.attr = curses.A_DIM
     panels = [table, prompt_head, prompt, status, status_detail]
 
-    def resize():
+    def resize(status_detail_height: None | int = None):
+        nonlocal status_detail_region
         status_height = 1
-        screen_size = Point(*stdscr.getmaxyx())
-        table.window.pos = Point(0, 0)
-        table.window.size = screen_size - Point(3, 0)
-        prompt_head.window.pos = Point(screen_size.y - status_height - 1, 0)
-        prompt_head.window.size = Point(1, 2)
-        prompt.window.pos = Point(screen_size.y - status_height - 1, 2)
-        prompt.window.size = Point(1, screen_size.x - 2)
-        status.window.pos = Point(screen_size.y - status_height, 0)
-        status.window.size = Point(status_height, screen_size.x)
-        status_detail.window.size = replace(status_detail.window.size, x=screen_size.x)
-        status_detail.window.pos = Point(
-            screen_size.y - status_height - 1 - status_detail.window.height, 0
+        screen_region = WindowRegion(stdscr)
+        size = screen_region.size
+        table.resize(SubRegion(screen_region, Point(0, 0), size - Point(3, 0)))
+        prompt_head.resize(
+            SubRegion(screen_region, Point(size.y - status_height - 1, 0), Point(1, 2))
         )
-        for panel in panels:
-            panel.resize()
+        prompt.resize(
+            SubRegion(
+                screen_region,
+                Point(size.y - status_height - 1, 2),
+                Point(1, size.x - 2),
+            )
+        )
+        status.resize(
+            SubRegion(
+                screen_region,
+                Point(size.y - status_height, 0),
+                Point(status_height, size.x),
+            )
+        )
+        if status_detail_height is None:
+            status_detail_height = status_detail_region.height
+        status_detail_region = SubRegion(
+            screen_region,
+            Point(size.y - status_height - 1 - status_detail_height, 0),
+            Point(status_detail_height, size.x),
+        )
+        status_detail.resize(status_detail_region)
 
     jq = Jq(file, slurp)
     key_reader = KeyReader(stdscr)
@@ -123,12 +144,11 @@ def tjex(
         lines = msg.splitlines()
         status.content = "\n".join(lines[:1])
         if len(lines) <= 1:
-            status_detail.window.size = replace(status_detail.window.size, y=0)
+            resize(status_detail_height=0)
             status_detail.content = ""
         else:
-            status_detail.window.size = replace(status_detail.window.size, y=len(lines))
+            resize(status_detail_height=len(lines))
             status_detail.content = "\n".join(lines)
-        resize()
 
     def update_jq_status(block: bool = False):
         nonlocal current_command

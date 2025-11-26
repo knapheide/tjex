@@ -1,9 +1,9 @@
 import curses
 from timeit import timeit
-from typing import Any, cast, override
+from typing import override
 
 import pytest
-from tjex.curses_helper import WindowRegion
+from tjex.curses_helper import Region
 from tjex.json_table import (
     Json,
     JsonCellFormatter,
@@ -14,11 +14,11 @@ from tjex.json_table import (
 from tjex.point import Point
 
 
-class WindowRegionDummy(WindowRegion):
+class RegionDummy(Region):
     def __init__(self, size: Point):
         # Stub out curses functions that might get called
         curses.color_pair = lambda _: 0  # pyright: ignore[reportUnknownLambdaType]
-        super().__init__(cast(Any, None), Point.ZERO, size, Point.ZERO)
+        self.size: Point = size
         self.content: str = ""
 
     @override
@@ -33,7 +33,7 @@ class WindowRegionDummy(WindowRegion):
 def cell_to_string(
     formatter: JsonCellFormatter, cell: TableCell, max_width: int | None
 ):
-    dummy = WindowRegionDummy(Point(20, 20))
+    dummy = RegionDummy(Point(20, 20))
     formatter.draw(cell, dummy, Point.ZERO, max_width, 0, False)
     return dummy.content
 

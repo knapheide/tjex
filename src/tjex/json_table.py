@@ -8,7 +8,7 @@ from math import log10
 from typing import override
 
 from tjex.config import config
-from tjex.curses_helper import WindowRegion
+from tjex.curses_helper import Region
 from tjex.point import Point
 from tjex.table import CellFormatter, Table
 
@@ -234,7 +234,7 @@ class JsonCellFormatter(CellFormatter[TableCell]):
     def draw(
         self,
         cell: TableCell,
-        region: WindowRegion,
+        region: Region,
         pos: Point,
         max_width: int | None,
         attr: int,
