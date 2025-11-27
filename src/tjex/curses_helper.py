@@ -83,6 +83,11 @@ class Region(ABC):
     def chgat(self, pos: Point, width: int, attr: int) -> None:
         pass
 
+    def resize(self):
+        """If this region's size depends on external resources.
+        (Currently only used for WindowRegion)
+        """
+
 
 class DummyRegion(Region):
     @override
@@ -97,7 +102,7 @@ class DummyRegion(Region):
 class WindowRegion(Region):
     def __init__(self, window: curses.window):
         self.window: curses.window = window
-        self.size: Point = Point(*self.window.getmaxyx())
+        self.resize()
 
     @override
     def insstr(self, pos: Point, s: str, attr: int = 0):
@@ -112,6 +117,10 @@ class WindowRegion(Region):
             self.window.chgat(
                 pos.y, max(0, pos.x), min(self.width, width - max(0, -pos.x)), attr
             )
+
+    @override
+    def resize(self):
+        self.size: Point = Point(*self.window.getmaxyx())
 
 
 @dataclass

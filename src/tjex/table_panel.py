@@ -40,7 +40,7 @@ class TableState:
 class TablePanel(Panel, Generic[T_Key, T_Cell]):
     bindings: KeyBindings[Self, Event | None] = KeyBindings()
 
-    def __init__(self, region: WindowRegion):
+    def __init__(self, region: Region):
         self._max_cell_width: int | None = None
         self.full_cell_width: bool = False
         self.table: Table[T_Key, T_Cell] = Table({}, [], [], [], [], [])

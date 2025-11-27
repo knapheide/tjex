@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from multiprocessing import set_start_method
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, Callable
 
 import argcomplete
 
@@ -24,6 +24,7 @@ from tjex.config import load as load_config
 from tjex.curses_helper import (
     DummyRegion,
     KeyReader,
+    Region,
     SubRegion,
     WindowRegion,
     setup_plain_colors,
@@ -82,7 +83,10 @@ class Quit(Event):
 
 
 def tjex(
-    stdscr: curses.window,
+    screen: Region,
+    key_reader: Callable[[], str | None],
+    screen_erase: Callable[[], None],
+    screen_refresh: Callable[[], None],
     file: list[Path],
     command: str,
     config: Path,
@@ -92,7 +96,7 @@ def tjex(
     curses.curs_set(0)  # pyright: ignore[reportUnusedCallResult]
     setup_plain_colors()
 
-    table = TablePanel[TableKey, TableCell](WindowRegion(stdscr))
+    table = TablePanel[TableKey, TableCell](screen)
     prompt_head = TextEditPanel("> ")
     prompt = TextEditPanel(command)
     status = TextPanel("")
@@ -104,22 +108,22 @@ def tjex(
     def resize(status_detail_height: None | int = None):
         nonlocal status_detail_region
         status_height = 1
-        screen_region = WindowRegion(stdscr)
-        size = screen_region.size
-        table.resize(SubRegion(screen_region, Point(0, 0), size - Point(3, 0)))
+        screen.resize()
+        size = screen.size
+        table.resize(SubRegion(screen, Point(0, 0), size - Point(3, 0)))
         prompt_head.resize(
-            SubRegion(screen_region, Point(size.y - status_height - 1, 0), Point(1, 2))
+            SubRegion(screen, Point(size.y - status_height - 1, 0), Point(1, 2))
         )
         prompt.resize(
             SubRegion(
-                screen_region,
+                screen,
                 Point(size.y - status_height - 1, 2),
                 Point(1, size.x - 2),
             )
         )
         status.resize(
             SubRegion(
-                screen_region,
+                screen,
                 Point(size.y - status_height, 0),
                 Point(status_height, size.x),
             )
@@ -127,14 +131,13 @@ def tjex(
         if status_detail_height is None:
             status_detail_height = status_detail_region.height
         status_detail_region = SubRegion(
-            screen_region,
+            screen,
             Point(size.y - status_height - 1 - status_detail_height, 0),
             Point(status_detail_height, size.x),
         )
         status_detail.resize(status_detail_region)
 
     jq = Jq(file, slurp)
-    key_reader = KeyReader(stdscr)
 
     current_command: str = command
     table_cursor_history: dict[str, TableState] = {}
@@ -311,7 +314,7 @@ def tjex(
     redraw = True
 
     while True:
-        if (key := key_reader.get()) is not None:
+        if (key := key_reader()) is not None:
             try:
                 for event in active_cycle[0].handle_key(KeyPress(key)):
                     match bindings.handle_key(event, None):
@@ -330,10 +333,10 @@ def tjex(
             continue
 
         if update_jq_status() or redraw:
-            stdscr.erase()
+            screen_erase()
             for panel in panels:
                 panel.draw()
-            stdscr.refresh()
+            screen_refresh()
             redraw = False
             continue
 
@@ -373,8 +376,13 @@ def main():
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
         result = curses.wrapper(
-            tjex,
-            **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
+            lambda scr: tjex(
+                WindowRegion(scr),
+                KeyReader(scr).get,
+                scr.erase,
+                scr.refresh,
+                **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
+            )
         )
     return result
 
