@@ -13,6 +13,8 @@ def merge_keys_speed(n: int):
     )
 
 
+BARS = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+
 if __name__ == "__main__":
     ns = [2**i for i in range(15)]
     ts = [merge_keys_speed(n) for n in ns]
@@ -20,4 +22,5 @@ if __name__ == "__main__":
     scale = (width - 10) / max(ts)
 
     for n, t in zip(ns, ts):
-        print(f"{n:8d}: {int(t * scale) * '#'}")
+        bar = int(t * scale) * "█" + BARS[int(((t * scale) % 1) * len(BARS))]
+        print(f"{n:9d} {bar}")
