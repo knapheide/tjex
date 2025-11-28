@@ -18,7 +18,7 @@ from typing import Any, Callable
 
 import argcomplete
 
-from tjex import logging
+from tjex import curses_helper, logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
 from tjex.curses_helper import (
@@ -93,9 +93,6 @@ def tjex(
     max_cell_width: int | None,
     slurp: bool,
 ) -> int:
-    curses.curs_set(0)  # pyright: ignore[reportUnusedCallResult]
-    setup_plain_colors()
-
     table = TablePanel[TableKey, TableCell](screen)
     prompt_head = TextEditPanel("> ")
     prompt = TextEditPanel(command)
@@ -375,15 +372,19 @@ def main():
         for i in range(len(args.file)):
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
-        result = curses.wrapper(
-            lambda scr: tjex(
+
+        @curses.wrapper
+        def result(scr: curses.window):
+            _ = curses.curs_set(0)
+            curses_helper.setup_plain_colors()
+            return tjex(
                 WindowRegion(scr),
                 KeyReader(scr).get,
                 scr.erase,
                 scr.refresh,
                 **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
             )
-        )
+
     return result
 
 
