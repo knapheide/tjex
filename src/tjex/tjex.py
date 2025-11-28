@@ -9,11 +9,9 @@ import shlex
 import subprocess as sp
 import sys
 import time
-from contextlib import ExitStack
 from dataclasses import dataclass
 from multiprocessing import set_start_method
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any, Callable
 
 import argcomplete
@@ -37,7 +35,7 @@ from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
 from tjex.table_panel import TablePanel, TableState
 from tjex.text_panel import TextEditPanel, TextPanel
-from tjex.utils import TjexError
+from tjex.utils import TjexError, TmpFiles
 
 
 def append_history(jq_cmd: str) -> StatusUpdate:
@@ -348,16 +346,7 @@ def main():
     args = parser.parse_args()
     logging.setup(args.logfile)
 
-    with ExitStack() as stack:
-
-        def tmpfile(s: str):
-            buffered = stack.enter_context(
-                NamedTemporaryFile(mode="w", delete_on_close=False, delete=True)
-            )
-            _ = buffered.write(s)
-            buffered.close()
-            return Path(buffered.name)
-
+    with TmpFiles() as tmpfile:
         if not args.file:
             args.file = [tmpfile(sys.stdin.read())]
             os.close(0)
