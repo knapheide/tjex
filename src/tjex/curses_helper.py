@@ -90,9 +90,15 @@ class Region(ABC):
 
 
 class DummyRegion(Region):
+    def __init__(self, size: Point = Point.ZERO):
+        self.size: Point = size
+        self.content: list[str] = self.height * [self.width * " "]
+
     @override
     def insstr(self, pos: Point, s: str, attr: int = 0) -> None:
-        pass
+        self.content[pos.y] = (
+            self.content[pos.y][: pos.x] + s + self.content[pos.y][pos.x :]
+        )[: self.width]
 
     @override
     def chgat(self, pos: Point, width: int, attr: int) -> None:

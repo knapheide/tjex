@@ -3,7 +3,7 @@ from timeit import timeit
 from typing import override
 
 import pytest
-from tjex.curses_helper import Region
+from tjex.curses_helper import DummyRegion, Region
 from tjex.json_table import (
     Json,
     JsonCellFormatter,
@@ -13,29 +13,16 @@ from tjex.json_table import (
 )
 from tjex.point import Point
 
-
-class RegionDummy(Region):
-    def __init__(self, size: Point):
-        # Stub out curses functions that might get called
-        curses.color_pair = lambda _: 0  # pyright: ignore[reportUnknownLambdaType]
-        self.size: Point = size
-        self.content: str = ""
-
-    @override
-    def insstr(self, pos: Point, s: str, attr: int = 0):
-        self.content = pos.x * " " + s
-
-    @override
-    def chgat(self, pos: Point, width: int, attr: int):
-        pass
+# Stub out curses functions that might get called
+curses.color_pair = lambda _: 0  # pyright: ignore[reportUnknownLambdaType]
 
 
 def cell_to_string(
     formatter: JsonCellFormatter, cell: TableCell, max_width: int | None
 ):
-    dummy = RegionDummy(Point(20, 20))
+    dummy = DummyRegion(Point(1, 1000))
     formatter.draw(cell, dummy, Point.ZERO, max_width, 0, False)
-    return dummy.content
+    return dummy.content[0].rstrip()
 
 
 @pytest.mark.parametrize(
@@ -63,15 +50,3 @@ def test_column_formatter(
     assert ref == [cell_to_string(formatter, cell, max_width) for cell in cells]
     assert formatter.width == width, "width mismatch"
     assert formatter.min_width == min_width, "min_width mismatch"
-
-
-def test_merge_keys_speed():
-    # TODO some assertion for this?
-    print(
-        timeit(
-            lambda: collect_keys(
-                [[f"data.{i}" for i in range(100000 + 100000 * j)] for j in range(10)]
-            ),
-            number=1,
-        )
-    )
