@@ -10,7 +10,7 @@ import subprocess as sp
 import sys
 import time
 from contextlib import ExitStack
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from multiprocessing import set_start_method
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -21,14 +21,7 @@ import argcomplete
 from tjex import curses_helper, logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
-from tjex.curses_helper import (
-    DummyRegion,
-    KeyReader,
-    Region,
-    SubRegion,
-    WindowRegion,
-    setup_plain_colors,
-)
+from tjex.curses_helper import DummyRegion, KeyReader, Region, SubRegion, WindowRegion
 from tjex.jq import (
     Jq,
     JqResult,

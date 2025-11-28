@@ -10,7 +10,6 @@ from tjex.curses_helper import (
     OffsetRegion,
     Region,
     SubRegion,
-    WindowRegion,
 )
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
 from tjex.point import Point

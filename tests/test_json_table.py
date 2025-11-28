@@ -1,16 +1,8 @@
 import curses
-from timeit import timeit
-from typing import override
 
 import pytest
-from tjex.curses_helper import DummyRegion, Region
-from tjex.json_table import (
-    Json,
-    JsonCellFormatter,
-    TableCell,
-    collect_keys,
-    to_table_cell,
-)
+from tjex.curses_helper import DummyRegion
+from tjex.json_table import Json, JsonCellFormatter, TableCell, to_table_cell
 from tjex.point import Point
 
 # Stub out curses functions that might get called
