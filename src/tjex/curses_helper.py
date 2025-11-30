@@ -94,6 +94,9 @@ class DummyRegion(Region):
         self.size: Point = size
         self.content: list[str] = self.height * [self.width * " "]
 
+    def clear(self):
+        self.content = self.height * [self.width * " "]
+
     @override
     def insstr(self, pos: Point, s: str, attr: int = 0) -> None:
         self.content[pos.y] = (
