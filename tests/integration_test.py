@@ -1,4 +1,5 @@
 import argparse
+import curses
 import json
 import re
 import time
@@ -7,11 +8,15 @@ from pathlib import Path
 from typing import Literal, NotRequired, TypedDict, cast
 
 import pytest
+import tjex.config as tjex_config
 from tjex import tjex
 from tjex.curses_helper import KEY_ALIASES, DummyRegion
 from tjex.json_table import Json
 from tjex.point import Point
 from tjex.utils import TmpFiles
+
+# Stub out curses functions that might get called
+curses.color_pair = lambda _: 0  # pyright: ignore[reportUnknownLambdaType]
 
 
 class Command(TypedDict):
@@ -39,6 +44,7 @@ class Case(TypedDict):
     screen_shape: list[int]
     inputs: list[str | list[Json]]
     commands: list[Command]
+    config: NotRequired[list[str]]
 
 
 def case_name(path: Path):
@@ -54,7 +60,8 @@ def run_case(path: Path, update: bool):
         test_case: Case = json.load(f)
     print()
     print(f"Running {case_name(path)}")
-    print("-- " + test_case["description"])
+    for description_line in test_case["description"].splitlines():
+        print("-- " + description_line)
 
     screen = DummyRegion(Point(*test_case["screen_shape"]))
 
@@ -93,6 +100,7 @@ def run_case(path: Path, update: bool):
     key_reader = foo()
 
     with TmpFiles() as tmpfile:
+        tjex_config.config = tjex_config.Config()
         assert 0 == tjex.tjex(
             screen,
             lambda: next(key_reader),
@@ -107,7 +115,7 @@ def run_case(path: Path, update: bool):
                 for i in test_case["inputs"]
             ],
             "",
-            tmpfile(""),
+            tmpfile("".join(l + "\n" for l in test_case.get("config", []))),
             50,
             False,
         )
@@ -115,6 +123,7 @@ def run_case(path: Path, update: bool):
     if update:
         with open(path, "w") as f:
             json.dump(test_case, f, indent=2)
+            f.write("\n")
 
 
 @pytest.fixture
