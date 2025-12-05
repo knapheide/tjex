@@ -3,6 +3,7 @@ import curses
 import json
 import re
 import time
+from collections.abc import Generator
 from multiprocessing import set_start_method
 from pathlib import Path
 from typing import Literal, NotRequired, TypedDict, cast
@@ -26,6 +27,11 @@ class Command(TypedDict):
 class InputCommand(TypedDict):
     op: Literal["input"]
     key: str
+
+
+class TypeCommand(TypedDict):
+    op: Literal["type"]
+    text: str
 
 
 class SleepCommand(TypedDict):
@@ -65,7 +71,7 @@ def run_case(path: Path, update: bool):
 
     screen = DummyRegion(Point(*test_case["screen_shape"]))
 
-    def foo():
+    def foo() -> Generator[str | None]:
         for command in test_case["commands"]:
             match command["op"]:
                 case "input":
@@ -73,6 +79,9 @@ def run_case(path: Path, update: bool):
                         InputCommand, command
                     )  # pyright: ignore[reportInvalidCast]
                     yield KEY_ALIASES.get(c["key"], c["key"])
+                case "type":
+                    c = cast(TypeCommand, command)  # pyright: ignore[reportInvalidCast]
+                    yield from c["text"]
                 case "sleep":
                     c = cast(
                         SleepCommand, command
@@ -100,7 +109,8 @@ def run_case(path: Path, update: bool):
     key_reader = foo()
 
     with TmpFiles() as tmpfile:
-        tjex_config.config = tjex_config.Config()
+        for k, v in vars(tjex_config.Config()).items():
+            setattr(tjex_config.config, k, v)
         assert 0 == tjex.tjex(
             screen,
             lambda: next(key_reader),
@@ -123,7 +133,7 @@ def run_case(path: Path, update: bool):
     if update:
         with open(path, "w") as f:
             json.dump(test_case, f, indent=2)
-            f.write("\n")
+            _ = f.write("\n")
 
 
 @pytest.fixture
