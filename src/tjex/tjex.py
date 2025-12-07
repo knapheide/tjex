@@ -9,19 +9,17 @@ import shlex
 import subprocess as sp
 import sys
 import time
-from contextlib import ExitStack
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from multiprocessing import set_start_method
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, Callable
 
 import argcomplete
 
-from tjex import logging
+from tjex import curses_helper, logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
-from tjex.curses_helper import KeyReader, WindowRegion, setup_plain_colors
+from tjex.curses_helper import DummyRegion, KeyReader, Region, SubRegion, WindowRegion
 from tjex.jq import (
     Jq,
     JqResult,
@@ -37,7 +35,7 @@ from tjex.panel import Event, KeyBindings, KeyPress, StatusUpdate
 from tjex.point import Point
 from tjex.table_panel import TablePanel, TableState
 from tjex.text_panel import TextEditPanel, TextPanel
-from tjex.utils import TjexError
+from tjex.utils import TjexError, TmpFiles
 
 
 def append_history(jq_cmd: str) -> StatusUpdate:
@@ -76,44 +74,58 @@ class Quit(Event):
 
 
 def tjex(
-    stdscr: curses.window,
+    screen: Region,
+    key_reader: Callable[[], str | None],
+    screen_erase: Callable[[], None],
+    screen_refresh: Callable[[], None],
     file: list[Path],
     command: str,
     config: Path,
     max_cell_width: int | None,
     slurp: bool,
 ) -> int:
-    curses.curs_set(0)  # pyright: ignore[reportUnusedCallResult]
-    setup_plain_colors()
-
-    table = TablePanel[TableKey, TableCell](WindowRegion(stdscr))
-    prompt_head = TextEditPanel(WindowRegion(stdscr), "> ")
-    prompt = TextEditPanel(WindowRegion(stdscr), command)
-    status = TextPanel(WindowRegion(stdscr), "")
-    status_detail = TextPanel(WindowRegion(stdscr), "", clear_first=True)
+    table = TablePanel[TableKey, TableCell](screen)
+    prompt_head = TextEditPanel("> ")
+    prompt = TextEditPanel(command)
+    status = TextPanel("")
+    status_detail_region = SubRegion(DummyRegion(), Point.ZERO, Point.ZERO)
+    status_detail = TextPanel("", clear_first=True)
     status_detail.attr = curses.A_DIM
     panels = [table, prompt_head, prompt, status, status_detail]
 
-    def resize():
+    def resize(status_detail_height: None | int = None):
+        nonlocal status_detail_region
         status_height = 1
-        screen_size = Point(*stdscr.getmaxyx())
-        table.window.pos = Point(0, 0)
-        table.window.size = screen_size - Point(3, 0)
-        prompt_head.window.pos = Point(screen_size.y - status_height - 1, 0)
-        prompt_head.window.size = Point(1, 2)
-        prompt.window.pos = Point(screen_size.y - status_height - 1, 2)
-        prompt.window.size = Point(1, screen_size.x - 2)
-        status.window.pos = Point(screen_size.y - status_height, 0)
-        status.window.size = Point(status_height, screen_size.x)
-        status_detail.window.size = replace(status_detail.window.size, x=screen_size.x)
-        status_detail.window.pos = Point(
-            screen_size.y - status_height - 1 - status_detail.window.height, 0
+        screen.resize()
+        size = screen.size
+        table.resize(SubRegion(screen, Point(0, 0), size - Point(3, 0)))
+        prompt_head.resize(
+            SubRegion(screen, Point(size.y - status_height - 1, 0), Point(1, 2))
         )
-        for panel in panels:
-            panel.resize()
+        prompt.resize(
+            SubRegion(
+                screen,
+                Point(size.y - status_height - 1, 2),
+                Point(1, size.x - 2),
+            )
+        )
+        status.resize(
+            SubRegion(
+                screen,
+                Point(size.y - status_height, 0),
+                Point(status_height, size.x),
+            )
+        )
+        if status_detail_height is None:
+            status_detail_height = status_detail_region.height
+        status_detail_region = SubRegion(
+            screen,
+            Point(size.y - status_height - 1 - status_detail_height, 0),
+            Point(status_detail_height, size.x),
+        )
+        status_detail.resize(status_detail_region)
 
     jq = Jq(file, slurp)
-    key_reader = KeyReader(stdscr)
 
     current_command: str = command
     table_cursor_history: dict[str, TableState] = {}
@@ -123,12 +135,11 @@ def tjex(
         lines = msg.splitlines()
         status.content = "\n".join(lines[:1])
         if len(lines) <= 1:
-            status_detail.window.size = replace(status_detail.window.size, y=0)
+            resize(status_detail_height=0)
             status_detail.content = ""
         else:
-            status_detail.window.size = replace(status_detail.window.size, y=len(lines))
+            resize(status_detail_height=len(lines))
             status_detail.content = "\n".join(lines)
-        resize()
 
     def update_jq_status(block: bool = False):
         nonlocal current_command
@@ -291,7 +302,7 @@ def tjex(
     redraw = True
 
     while True:
-        if (key := key_reader.get()) is not None:
+        if (key := key_reader()) is not None:
             try:
                 for event in active_cycle[0].handle_key(KeyPress(key)):
                     match bindings.handle_key(event, None):
@@ -310,10 +321,10 @@ def tjex(
             continue
 
         if update_jq_status() or redraw:
-            stdscr.erase()
+            screen_erase()
             for panel in panels:
                 panel.draw()
-            stdscr.refresh()
+            screen_refresh()
             redraw = False
             continue
 
@@ -322,7 +333,7 @@ def tjex(
 
 def main():
     set_start_method("forkserver")
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="A tabular json explorer.")
     _ = parser.add_argument("file", type=Path, nargs="*")
     _ = parser.add_argument("-c", "--command", default="")
     _ = parser.add_argument(
@@ -335,16 +346,7 @@ def main():
     args = parser.parse_args()
     logging.setup(args.logfile)
 
-    with ExitStack() as stack:
-
-        def tmpfile(s: str):
-            buffered = stack.enter_context(
-                NamedTemporaryFile(mode="w", delete_on_close=False, delete=True)
-            )
-            _ = buffered.write(s)
-            buffered.close()
-            return Path(buffered.name)
-
+    with TmpFiles() as tmpfile:
         if not args.file:
             args.file = [tmpfile(sys.stdin.read())]
             os.close(0)
@@ -352,10 +354,19 @@ def main():
         for i in range(len(args.file)):
             if not args.file[i].is_file():
                 args.file[i] = tmpfile(args.file[i].read_text())
-        result = curses.wrapper(
-            tjex,
-            **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
-        )
+
+        @curses.wrapper
+        def result(scr: curses.window):
+            _ = curses.curs_set(0)
+            curses_helper.setup_plain_colors()
+            return tjex(
+                WindowRegion(scr),
+                KeyReader(scr).get,
+                scr.erase,
+                scr.refresh,
+                **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
+            )
+
     return result
 
 

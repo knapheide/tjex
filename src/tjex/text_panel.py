@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Self, override
 
 from tjex.config import config
-from tjex.curses_helper import WindowRegion
+from tjex.curses_helper import DummyRegion, OffsetRegion, Region
 from tjex.history import History
 from tjex.kill_ring import KillRing
 from tjex.panel import Event, KeyBindings, KeyPress, Panel, StatusUpdate
@@ -15,11 +15,15 @@ from tjex.point import Point
 
 
 class TextPanel(Panel):
-    def __init__(self, window: WindowRegion, content: str, clear_first: bool = False):
-        self.window: WindowRegion = window
+    def __init__(self, content: str, clear_first: bool = False):
+        self.region: Region = DummyRegion()
         self.content: str = content
         self.attr: int = 0
         self.clear_first: bool = clear_first
+
+    @override
+    def resize(self, region: Region):
+        self.region = region
 
     @override
     def handle_key(self, key: KeyPress):
@@ -28,10 +32,10 @@ class TextPanel(Panel):
     @override
     def draw(self):
         if self.clear_first:
-            for i in range(self.window.height):
-                self.window.insstr(Point(i, 0), self.window.width * " ")
+            for i in range(self.region.height):
+                self.region.insstr(Point(i, 0), self.region.width * " ")
         for i, s in enumerate(self.content.splitlines()):
-            self.window.insstr(Point(i, 0), s, self.attr)
+            self.region.insstr(Point(i, 0), s, self.attr)
 
 
 @dataclass(frozen=True)
@@ -44,14 +48,18 @@ class TextEditPanel(Panel):
     bindings: KeyBindings[Self, None | Event] = KeyBindings()
     word_char_pattern: re.Pattern[str] = re.compile(r"[0-9a-zA-Z_-]")
 
-    def __init__(self, window: WindowRegion, content: str):
-        self.window: WindowRegion = window
+    def __init__(self, content: str):
+        self.region: OffsetRegion = OffsetRegion(DummyRegion(), Point.ZERO)
         self.content: str = content
         self.cursor: int = len(content)
         self.history: History[TextEditPanelState] = History(self.state)
         self.kill_ring: KillRing = KillRing()
         # If the last command was yank or rotate, the position where that yank started, None otherwise
         self.yank_start: int | None = None
+
+    @override
+    def resize(self, region: Region):
+        self.region = OffsetRegion(region, self.region.offset)
 
     def next_word(self):
         next_cursor = self.cursor
@@ -211,20 +219,20 @@ class TextEditPanel(Panel):
         self.update_content_base()
 
     def update_content_base(self):
-        if self.cursor < self.window.content_base.x:
-            self.window.content_base = Point(0, self.cursor)
-        if self.cursor >= self.window.content_base.x + self.window.width:
-            self.window.content_base = Point(0, self.cursor - self.window.width + 1)
-        if len(self.content) < self.window.content_base.x + self.window.width:
-            self.window.content_base = Point(
-                0, max(0, len(self.content) - self.window.width + 1)
+        if self.cursor < self.region.offset.x:
+            self.region.offset = Point(0, self.cursor)
+        if self.cursor >= self.region.offset.x + self.region.width:
+            self.region.offset = Point(0, self.cursor - self.region.width + 1)
+        if len(self.content) < self.region.offset.x + self.region.width:
+            self.region.offset = Point(
+                0, max(0, len(self.content) - self.region.width + 1)
             )
 
     @override
     def draw(self):
-        self.window.insstr(Point(0, 0), self.content)
+        self.region.insstr(Point(0, 0), self.content)
         if self.active:
-            self.window.chgat(Point(0, self.cursor), 1, curses.A_REVERSE)
+            self.region.chgat(Point(0, self.cursor), 1, curses.A_REVERSE)
 
     def update(
         self,

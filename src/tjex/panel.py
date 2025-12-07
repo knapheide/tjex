@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Callable, Generic, TypeVar
 
-from tjex.curses_helper import KEY_ALIASES, WindowRegion
+from tjex.curses_helper import KEY_ALIASES, Region
 
 
 class Event(ABC):
@@ -57,9 +57,9 @@ class KeyBindings(Generic[T, S]):
 
 class Panel(ABC):
     active: bool = False
-    window: WindowRegion
 
-    def resize(self):
+    @abstractmethod
+    def resize(self, region: Region):
         pass
 
     @abstractmethod

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 from tjex.point import Point
 
 if TYPE_CHECKING:
-    from tjex.curses_helper import WindowRegion
+    from tjex.curses_helper import Region
 
 T_Cell = TypeVar("T_Cell")
 T_Key = TypeVar("T_Key")
@@ -21,7 +21,7 @@ class CellFormatter(ABC, Generic[T_Cell]):
     def draw(
         self,
         cell: T_Cell,
-        region: WindowRegion,
+        region: Region,
         pos: Point,
         max_width: int | None,
         attr: int,

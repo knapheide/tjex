@@ -5,7 +5,12 @@ from dataclasses import dataclass, replace
 from typing import Generic, Self, override
 
 from tjex.config import config
-from tjex.curses_helper import WindowRegion
+from tjex.curses_helper import (
+    DummyRegion,
+    OffsetRegion,
+    Region,
+    SubRegion,
+)
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
 from tjex.point import Point
 from tjex.table import T_Cell, T_Key, Table
@@ -34,30 +39,41 @@ class TableState:
 class TablePanel(Panel, Generic[T_Key, T_Cell]):
     bindings: KeyBindings[Self, Event | None] = KeyBindings()
 
-    def __init__(self, window: WindowRegion):
-        self.window: WindowRegion = window
+    def __init__(self, region: Region):
         self._max_cell_width: int | None = None
         self.full_cell_width: bool = False
         self.table: Table[T_Key, T_Cell] = Table({}, [], [], [], [], [])
         self.offsets: list[int] = []
         self.content_offset: Point = Point(1, 0)
         self.cursor: Point = Point(0, 0)
-        self.content_window: WindowRegion = WindowRegion(self.window.window)
-        self.row_header_window: WindowRegion = WindowRegion(self.window.window)
-        self.col_header_window: WindowRegion = WindowRegion(self.window.window)
+        self.region: Region = region
+        self.content_region: OffsetRegion = OffsetRegion(DummyRegion(), Point.ZERO)
+        self.row_header_region: OffsetRegion = OffsetRegion(DummyRegion(), Point.ZERO)
+        self.col_header_region: OffsetRegion = OffsetRegion(DummyRegion(), Point.ZERO)
 
     @override
-    def resize(self):
-        self.row_header_window.pos = replace(self.content_offset, x=0) + self.window.pos
-        self.row_header_window.size = self.window.size - replace(
-            self.content_offset, x=0
+    def resize(self, region: Region):
+        self.region = region
+        self.row_header_region = OffsetRegion(
+            SubRegion(
+                region,
+                replace(self.content_offset, x=0),
+                region.size - replace(self.content_offset, x=0),
+            ),
+            self.row_header_region.offset,
         )
-        self.col_header_window.pos = replace(self.content_offset, y=0) + self.window.pos
-        self.col_header_window.size = self.window.size - replace(
-            self.content_offset, y=0
+        self.col_header_region = OffsetRegion(
+            SubRegion(
+                region,
+                replace(self.content_offset, y=0),
+                region.size - replace(self.content_offset, y=0),
+            ),
+            self.col_header_region.offset,
         )
-        self.content_window.pos = self.content_offset + self.window.pos
-        self.content_window.size = self.window.size - self.content_offset
+        self.content_region = OffsetRegion(
+            SubRegion(region, self.content_offset, region.size - self.content_offset),
+            self.content_region.offset,
+        )
 
     @property
     def max_cell_width(self):
@@ -81,19 +97,19 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
             1,
             table.col_formatters[0].final_width(self.max_cell_width) + 1,
         )
-        self.resize()
+        self.resize(self.region)
         if state is not None:
             self.cursor = state.cursor
-            self.content_window.content_base = state.content_base
+            self.content_region.offset = state.content_base
             self.clamp_cursor()
         else:
             self.cursor = Point(0, 0)
-            self.content_window.content_base = Point(0, 0)
+            self.content_region.offset = Point(0, 0)
         self.propagate_content_base()
 
     @property
     def state(self):
-        return TableState(self.cursor, self.content_window.content_base)
+        return TableState(self.cursor, self.content_region.offset)
 
     @override
     def draw(self):
@@ -106,7 +122,7 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
                     (
                         i
                         for i, offset in enumerate(self.offsets)
-                        if offset > self.content_window.content_base.x
+                        if offset > self.content_region.offset.x
                     ),
                     len(self.offsets),
                 )
@@ -117,15 +133,15 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
                     i
                     for i, offset in enumerate(self.offsets)
                     if offset
-                    >= self.content_window.content_base.x + self.content_window.width
+                    >= self.content_region.offset.x + self.content_region.width
                 ),
                 len(self.offsets) - 1,
             ),
         )
         row_range = range(
-            self.content_window.content_base.y,
+            self.content_region.offset.y,
             min(
-                self.content_window.content_base.y + self.content_window.height,
+                self.content_region.offset.y + self.content_region.height,
                 len(table.row_keys),
             ),
         )
@@ -133,7 +149,7 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
         for i in col_range:
             table.col_formatters[i + 1].draw(
                 table.col_headers[i],
-                self.col_header_window,
+                self.col_header_region,
                 Point(0, self.offsets[i]),
                 self.max_cell_width,
                 curses.A_BOLD,
@@ -143,7 +159,7 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
         for i in row_range:
             table.col_formatters[0].draw(
                 table.row_headers[i],
-                self.row_header_window,
+                self.row_header_region,
                 Point(i, 0),
                 self.max_cell_width,
                 curses.A_BOLD,
@@ -156,7 +172,7 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
                 if cell is not None:
                     table.col_formatters[j + 1].draw(
                         cell,
-                        self.content_window,
+                        self.content_region,
                         Point(i, self.offsets[j]),
                         self.max_cell_width,
                         0,
@@ -168,7 +184,7 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
 
     def chgat_cursor(self, a: int):
         if self.table.col_keys:
-            self.content_window.chgat(
+            self.content_region.chgat(
                 Point(self.cursor.y, self.offsets[self.cursor.x]),
                 self.table.col_formatters[self.cursor.x + 1].final_width(
                     self.max_cell_width
@@ -187,39 +203,35 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
 
         if (
             self.offsets[self.cursor.x + 1]
-            >= self.content_window.width + self.content_window.content_base.x
+            >= self.content_region.width + self.content_region.offset.x
         ):
-            self.content_window.content_base = replace(
-                self.content_window.content_base,
-                x=self.offsets[self.cursor.x + 1] - 1 - self.content_window.width,
+            self.content_region.offset = replace(
+                self.content_region.offset,
+                x=self.offsets[self.cursor.x + 1] - 1 - self.content_region.width,
             )
-        if self.offsets[self.cursor.x] < self.content_window.content_base.x:
-            self.content_window.content_base = replace(
-                self.content_window.content_base, x=self.offsets[self.cursor.x]
+        if self.offsets[self.cursor.x] < self.content_region.offset.x:
+            self.content_region.offset = replace(
+                self.content_region.offset, x=self.offsets[self.cursor.x]
             )
 
         if (
             self.cursor.y + 1
-            > self.content_window.height + self.content_window.content_base.y
+            > self.content_region.height + self.content_region.offset.y
         ):
-            self.content_window.content_base = replace(
-                self.content_window.content_base,
-                y=self.cursor.y + 1 - self.content_window.height,
+            self.content_region.offset = replace(
+                self.content_region.offset,
+                y=self.cursor.y + 1 - self.content_region.height,
             )
-        if self.cursor.y < self.content_window.content_base.y:
-            self.content_window.content_base = replace(
-                self.content_window.content_base, y=self.cursor.y
+        if self.cursor.y < self.content_region.offset.y:
+            self.content_region.offset = replace(
+                self.content_region.offset, y=self.cursor.y
             )
 
         self.propagate_content_base()
 
     def propagate_content_base(self):
-        self.row_header_window.content_base = replace(
-            self.content_window.content_base, x=0
-        )
-        self.col_header_window.content_base = replace(
-            self.content_window.content_base, y=0
-        )
+        self.row_header_region.offset = replace(self.content_region.offset, x=0)
+        self.col_header_region.offset = replace(self.content_region.offset, y=0)
 
     @bindings.add("KEY_UP", "p", "C-p")
     def up(self):
@@ -265,11 +277,11 @@ class TablePanel(Panel, Generic[T_Key, T_Cell]):
 
     @bindings.add("KEY_NPAGE")
     def next_page(self):
-        self.cursor += Point(self.content_window.height, 0)
+        self.cursor += Point(self.content_region.height, 0)
 
     @bindings.add("KEY_PPAGE")
     def prev_page(self):
-        self.cursor -= Point(self.content_window.height, 0)
+        self.cursor -= Point(self.content_region.height, 0)
 
     @bindings.add("KEY_END", "C-e")
     def last_col(self):
