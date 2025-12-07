@@ -1,3 +1,4 @@
+import argparse
 import shutil
 from timeit import timeit
 
@@ -15,8 +16,9 @@ def merge_keys_speed(n: int):
 
 BARS = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
-if __name__ == "__main__":
-    ns = [2**i for i in range(15)]
+
+def main():
+    ns = [200 * i for i in range(20)]
     ts = [merge_keys_speed(n) for n in ns]
     width, _ = shutil.get_terminal_size((80, 20))
     scale = (width - 10) / max(ts)
@@ -24,3 +26,11 @@ if __name__ == "__main__":
     for n, t in zip(ns, ts):
         bar = int(t * scale) * "█" + BARS[int(((t * scale) % 1) * len(BARS))]
         print(f"{n:9d} {bar}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Plot complexity of collect_keys function"
+    )
+    _ = parser.parse_args()
+    main()

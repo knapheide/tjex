@@ -149,7 +149,9 @@ def test_integration(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Update expected results in integration test cases."
+    )
     _ = parser.add_argument("pattern", nargs="?", default="")
     args = parser.parse_args()
     set_start_method("forkserver")

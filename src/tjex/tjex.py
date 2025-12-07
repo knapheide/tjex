@@ -333,7 +333,7 @@ def tjex(
 
 def main():
     set_start_method("forkserver")
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="A tabular json explorer.")
     _ = parser.add_argument("file", type=Path, nargs="*")
     _ = parser.add_argument("-c", "--command", default="")
     _ = parser.add_argument(

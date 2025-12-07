@@ -84,7 +84,7 @@ class Region(ABC):
         pass
 
     def resize(self):
-        """If this region's size depends on external resources.
+        """If this region's size depends on external resources, update it.
         (Currently only used for WindowRegion)
         """
 
