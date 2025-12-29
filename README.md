@@ -36,6 +36,12 @@ To use jaq or gojq, set `jq_command` in `~/.config/tjex/config.toml`.
 ### With pipx
 
 ```shell
+pipx install tjex
+```
+
+or, to get the latest version directly from github:
+
+```shell
 pipx install git+https://github.com/knapheide/tjex.git
 ```
 
@@ -84,7 +90,6 @@ tail -f tjex.log
 * Status message animation (for pending jq process)
 * Nix flake
 * Plain-text search in table
-* Publish to PyPI
 * Handle large data sets more gracefully.
   Getting unusably slow is fine, but tjex should never lock up or run out of memory.
   * Option to abort switch from prompt to table.

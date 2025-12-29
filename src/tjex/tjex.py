@@ -10,6 +10,7 @@ import subprocess as sp
 import sys
 import time
 from dataclasses import dataclass
+from importlib.metadata import version
 from multiprocessing import set_start_method
 from pathlib import Path
 from typing import Any, Callable
@@ -334,6 +335,7 @@ def tjex(
 def main():
     set_start_method("forkserver")
     parser = argparse.ArgumentParser(description="A tabular json explorer.")
+    _ = parser.add_argument("--version", action="version", version=version("tjex"))
     _ = parser.add_argument("file", type=Path, nargs="*")
     _ = parser.add_argument("-c", "--command", default="")
     _ = parser.add_argument(
