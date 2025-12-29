@@ -1,0 +1,39 @@
+name: Basic Tests
+on: pull_request
+jobs:
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Common Setup
+        uses: ./.github/actions/setup
+      - name: Test
+        run: uv run --frozen pytest
+  isort:
+    name: isort
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Common Setup
+        uses: ./.github/actions/setup
+      - name: Run isort
+        run: uv run --frozen isort .
+  black:
+    name: black
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Common Setup
+        uses: ./.github/actions/setup
+      - name: Run black
+        run: uv run --frozen black .
+  basedpyright:
+    name: basedpyright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Common Setup
+        uses: ./.github/actions/setup
+      - name: Run basedpyright
+        run: uv run --frozen basedpyright

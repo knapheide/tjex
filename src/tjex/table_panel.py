@@ -5,12 +5,7 @@ from dataclasses import dataclass, replace
 from typing import Generic, Self, override
 
 from tjex.config import config
-from tjex.curses_helper import (
-    DummyRegion,
-    OffsetRegion,
-    Region,
-    SubRegion,
-)
+from tjex.curses_helper import DummyRegion, OffsetRegion, Region, SubRegion
 from tjex.panel import Event, KeyBindings, KeyPress, Panel
 from tjex.point import Point
 from tjex.table import T_Cell, T_Key, Table

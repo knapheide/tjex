@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal, NotRequired, TypedDict, cast
 
 import pytest
+
 import tjex.config as tjex_config
 from tjex import tjex
 from tjex.curses_helper import KEY_ALIASES, DummyRegion
@@ -136,7 +137,7 @@ def run_case(path: Path, update: bool):
             _ = f.write("\n")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def fork_server():
     set_start_method("forkserver")
 
