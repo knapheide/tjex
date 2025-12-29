@@ -5,6 +5,7 @@ jobs:
     name: pytest
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@main
       - name: Common Setup
         uses: ./.github/actions/setup
       - name: Install other dependencies
@@ -15,6 +16,7 @@ jobs:
     name: isort
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@main
       - name: Common Setup
         uses: ./.github/actions/setup
       - name: Run isort

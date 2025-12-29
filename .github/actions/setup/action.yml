@@ -1,7 +1,5 @@
 name: "Common Setup"
 runs:
-  - name: Checkout the repository
-    uses: actions/checkout@main
   - name: Install uv
     uses: astral-sh/setup-uv@v7
     with:
