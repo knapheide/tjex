@@ -85,12 +85,11 @@ tail -f tjex.log
 * Nix flake
 * Plain-text search in table
 * Publish to PyPI
-* CI
-* Improve performance / support larger data sets.
-  The limiting factor should be the call to jq, not the python code.
+* Handle large data sets more gracefully.
+  Getting unusably slow is fine, but tjex should never lock up or run out of memory.
   * Option to abort switch from prompt to table.
     Currently, tjex waits for the jq call to finish and there is no way to abort.
-  * Toggle between global / local formatting
+  * Option to toggle between global / local formatting
 * `--watch` option to automatically re-run filter.
   Probably using [watchdog](https://github.com/gorakhargosh/watchdog).
 * Cleaner way to get up-to-date config into subprocess
