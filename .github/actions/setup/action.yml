@@ -7,4 +7,5 @@ runs:
       with:
         enable-cache: true
     - name: Install Python 3.12
+      shell: bash
       run: uv python install 3.12
