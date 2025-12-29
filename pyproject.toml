@@ -1,6 +1,6 @@
 [project]
 name = "tjex"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Tabular Json Explorer"
 readme = "README.md"
 license = "MIT"
@@ -8,6 +8,10 @@ license-files = ["LICENSE"]
 authors = [{ name = "Justin Knapheide", email = "mail@jknapheide.de" }]
 requires-python = ">=3.12"
 dependencies = ["argcomplete"]
+
+[project.urls]
+Homepage = "https://github.com/knapheide/tjex"
+Repository = "https://github.com/knapheide/tjex"
 
 [project.scripts]
 tjex = "tjex.tjex:main"
