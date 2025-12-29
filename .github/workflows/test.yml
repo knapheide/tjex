@@ -1,0 +1,17 @@
+name: Basic Tests
+on: pull_request
+jobs:
+  pytest:
+    name: Run pytest tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@main
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install Python 3.12
+        run: uv python install 3.12
+      - name: Test
+        run: uv run --frozen pytest  # Uses the Python version automatically installed by uv
