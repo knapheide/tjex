@@ -29,7 +29,7 @@ jobs:
       - name: Common Setup
         uses: ./.github/actions/setup
       - name: Run black
-        run: uv run --frozen black
+        run: uv run --frozen black .
   basedpyright:
     name: basedpyright
     runs-on: ubuntu-latest
