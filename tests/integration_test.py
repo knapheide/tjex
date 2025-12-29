@@ -136,7 +136,7 @@ def run_case(path: Path, update: bool):
             _ = f.write("\n")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def fork_server():
     set_start_method("forkserver")
 
