@@ -13,5 +13,7 @@ jobs:
           enable-cache: true
       - name: Install Python 3.12
         run: uv python install 3.12
+      - name: Install other dependencies
+        run: sudo apt install -y jq gojq
       - name: Test
         run: uv run --frozen pytest  # Uses the Python version automatically installed by uv
