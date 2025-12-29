@@ -2,20 +2,20 @@ name: Basic Tests
 on: pull_request
 jobs:
   pytest:
-    name: Run pytest tests
+    name: pytest
     runs-on: ubuntu-latest
     steps:
       - name: Common Setup
-        uses: ./.github/actions/setup.yml
+        uses: ./.github/actions/setup
       - name: Install other dependencies
         run: sudo apt install -y jq gojq
       - name: Test
         run: uv run --frozen pytest
   isort:
-    name: Run pytest tests
+    name: isort
     runs-on: ubuntu-latest
     steps:
       - name: Common Setup
-        uses: ./.github/actions/setup.yml
+        uses: ./.github/actions/setup
       - name: Run isort
         run: uv run --frozen isort
