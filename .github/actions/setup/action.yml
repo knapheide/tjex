@@ -2,6 +2,11 @@ name: "Common Setup"
 runs:
   using: "composite"
   steps:
+    - name: Install other dependencies
+      uses: awalsh128/cache-apt-pkgs-action@v1
+      with:
+        packages: jq gojq
+        version: 1.0
     - name: Install uv
       uses: astral-sh/setup-uv@v7
       with:

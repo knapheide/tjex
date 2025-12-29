@@ -8,8 +8,6 @@ jobs:
       - uses: actions/checkout@main
       - name: Common Setup
         uses: ./.github/actions/setup
-      - name: Install other dependencies
-        run: sudo apt install -y jq gojq
       - name: Test
         run: uv run --frozen pytest
   isort:
