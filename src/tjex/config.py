@@ -122,3 +122,24 @@ def load(
         config_file.parent.mkdir(parents=True, exist_ok=True)
         with open(config_file, "w") as f:
             _ = f.write(make_example_config(bindings))
+
+
+def make_bindings_table(bindings: dict[str, KeyBindings[Any, Any]]):
+    res = ""
+    reverse_aliases = {v: k for k, v in KEY_ALIASES.items()}
+    for panel, b in bindings.items():
+        res += f"\n"
+        res += f"### {panel}\n"
+        res += "| Key | Function | Description |\n"
+        res += "| --- | --- | --- |\n"
+        for f in b.functions:
+            res += (
+                "| "
+                + " <br> ".join(
+                    "`" + str(json.dumps(reverse_aliases.get(k, k))[1:-1]) + "`"
+                    for k, v in b.bindings.items()
+                    if f == v
+                )
+                + f" | {f.name} | {(f.description or "").replace("\n", "")} |\n"
+            )
+    return res
