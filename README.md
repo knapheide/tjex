@@ -45,6 +45,8 @@ or, to get the latest version directly from github:
 pipx install git+https://github.com/knapheide/tjex.git
 ```
 
+## Hotkeys
+
 ## Configuration
 
 The default location for the configuration file is `~/.config/tjex/config.toml`.

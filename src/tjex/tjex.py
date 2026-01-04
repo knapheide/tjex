@@ -293,12 +293,15 @@ def tjex(
         config, {"global": bindings, "prompt": prompt.bindings, "table": table.bindings}
     )
     if make_hotkey_table:
-        print(
+        raise TjexError(
             make_bindings_table(
-                {"Global": bindings, "In Prompt": prompt.bindings, "In Table": table.bindings}
+                {
+                    "Global": bindings,
+                    "In Prompt": prompt.bindings,
+                    "In Table": table.bindings,
+                }
             )
         )
-        return 0
     if max_cell_width:
         loaded_config.max_cell_width = max_cell_width
 
