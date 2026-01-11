@@ -81,9 +81,9 @@ def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
             if doc := config.__dataclass_fields__[k].metadata.get("doc"):
                 res += comment_out(doc)
             if v is None:
-                res += comment_out(f'{json.dumps(k)} = ""')
+                res += comment_out(f'{json.dumps(k, ensure_ascii=False)} = ""')
             else:
-                res += f"{json.dumps(k)} = {json.dumps(v)}"
+                res += f"{json.dumps(k, ensure_ascii=False)} = {json.dumps(v, ensure_ascii=False)}"
 
     reverse_aliases = {v: k for k, v in KEY_ALIASES.items()}
     for panel, b in bindings.items():
@@ -96,7 +96,7 @@ def make_example_config(bindings: dict[str, KeyBindings[Any, Any]]):
                 res += comment_out(f.description)
             for k, v in b.bindings.items():
                 if v == f:
-                    res += f"{json.dumps(reverse_aliases.get(k, k))} = {json.dumps(f.name)}\n"
+                    res += f"{json.dumps(reverse_aliases.get(k, k), ensure_ascii=False)} = {json.dumps(f.name, ensure_ascii=False)}\n"
 
     return comment_out(res)
 

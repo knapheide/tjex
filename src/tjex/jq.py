@@ -35,7 +35,7 @@ def key_to_selector(key: TableKey):
         case str() if identifier_pattern.fullmatch(key):
             return f".{key}"
         case _:
-            return f"[{json.dumps(key)}]"
+            return f"[{json.dumps(key, ensure_ascii=False)}]"
 
 
 def keys_to_selector(*keys: TableKey):

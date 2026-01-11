@@ -51,7 +51,7 @@ def to_table_cell(v: Json | Undefined) -> TableCell:
         case "":
             return StringCell('""', attr=curses.A_DIM)
         case str():
-            encoded = json.dumps(v)
+            encoded = json.dumps(v, ensure_ascii=False)
             if v != encoded[1:-1]:
                 v = encoded
             return StringCell(v)

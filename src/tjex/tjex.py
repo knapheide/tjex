@@ -191,7 +191,7 @@ def tjex(
     @table.bindings.add("M-w")
     def copy_content(_: Any):  # pyright: ignore[reportUnusedFunction]
         """Copy output of current command to clipboard"""
-        loaded_config.do_copy(json.dumps(jq.run_plain()))
+        loaded_config.do_copy(json.dumps(jq.run_plain(), ensure_ascii=False))
         return StatusUpdate("Copied.")
 
     @table.bindings.add("\n")
@@ -217,7 +217,7 @@ def tjex(
         if isinstance(content, str):
             loaded_config.do_copy(content)
         else:
-            loaded_config.do_copy(json.dumps(content))
+            loaded_config.do_copy(json.dumps(content, ensure_ascii=False))
         return StatusUpdate("Copied.")
 
     def prompt_append(command: str, cursor: TableState | None = None):
@@ -232,7 +232,7 @@ def tjex(
         key = table.row_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt_append(f"expand({json.dumps(key)})", table.state)
+        prompt_append(f"expand({json.dumps(key, ensure_ascii=False)})", table.state)
 
     @table.bindings.add("e")
     def expand_col(_: Any):  # pyright: ignore[reportUnusedFunction]
@@ -240,7 +240,7 @@ def tjex(
         key = table.col_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt_append(f"map_values(expand({json.dumps(key)}))", table.state)
+        prompt_append(f"map_values(expand({json.dumps(key, ensure_ascii=False)}))", table.state)
 
     @table.bindings.add("K")
     def delete_row(_: Any):  # pyright: ignore[reportUnusedFunction]
