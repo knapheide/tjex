@@ -12,8 +12,7 @@ from tjex.utils import TjexError, TmpFiles
 curses.color_pair = lambda _: 0  # pyright: ignore[reportUnknownLambdaType]
 
 
-def main(readme: Path | None):
-    set_start_method("forkserver")
+def make_table():
     screen = DummyRegion(Point(0, 0))
 
     with TmpFiles() as tmpfile:
@@ -31,24 +30,33 @@ def main(readme: Path | None):
                 make_hotkey_table=True,
             )
         except TjexError as e:
-            table = e.msg
-            if readme is None:
-                print(table)
-            else:
-                with open(readme) as f:
-                    lines = iter(f.readlines())
-                    for l in lines:
-                        print(l, end="")
-                        if l.startswith("## Hotkeys"):
-                            break
-                    print(table)
-                    while not (l := next(lines)).startswith("## "):
-                        pass
-                    print(l, end="")
-                    for l in lines:
-                        print(l, end="")
+            return e.msg
+        raise TjexError("Something went wrong")
 
-            readme_lines = readme and iter(readme.read_text().splitlines())
+def main(readme: Path | None):
+    set_start_method("forkserver")
+
+    table = make_table()
+
+    if readme is None:
+        print(table)
+        return
+
+    readme_lines = iter(readme.read_text().splitlines())
+
+    with open(readme, "w") as f:
+        for l in readme_lines:
+            print(l, file=f)
+            if l.startswith("## Hotkeys"):
+                break
+        print(table, file=f)
+        while not (l := next(readme_lines)).startswith("## "):
+            pass
+        print(l, file=f)
+        for l in readme_lines:
+            print(l, file=f)
+
+    readme_lines = readme and iter(readme.read_text().splitlines())
 
 
 if __name__ == "__main__":

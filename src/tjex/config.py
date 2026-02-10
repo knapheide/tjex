@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, TypeVar
+import re
 
 from tjex.curses_helper import KEY_ALIASES
 from tjex.panel import KeyBindings
@@ -125,6 +126,7 @@ def load(
 
 
 def make_bindings_table(bindings: dict[str, KeyBindings[Any, Any]]):
+    whitespace = re.compile(r"\s+")
     res = ""
     reverse_aliases = {v: k for k, v in KEY_ALIASES.items()}
     for panel, b in bindings.items():
@@ -140,6 +142,6 @@ def make_bindings_table(bindings: dict[str, KeyBindings[Any, Any]]):
                     for k, v in b.bindings.items()
                     if f == v
                 )
-                + f" | {f.name} | {(f.description or "").replace("\n", "")} |\n"
+                + f" | {f.name} | {whitespace.sub(" ", f.description or "")} |\n"
             )
     return res
