@@ -47,4 +47,4 @@ jobs:
       - name: Update hotkey table
         run: uv run --frozen python scripts/update_hotkey_table.py README.md
       - name: Diff README
-        run: git diff README.md
+        run: git diff --exit-code README.md
