@@ -37,3 +37,14 @@ jobs:
         uses: ./.github/actions/setup
       - name: Run basedpyright
         run: uv run --frozen basedpyright
+  hotkeys:
+    name: hotkeys
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Common Setup
+        uses: ./.github/actions/setup
+      - name: Update hotkey table
+        run: uv run --frozen python scripts/update_hotkey_table.py README.md
+      - name: Diff README
+        run: git diff README.md
