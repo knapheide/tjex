@@ -20,6 +20,7 @@ import argcomplete
 from tjex import curses_helper, logging
 from tjex.config import config as loaded_config
 from tjex.config import load as load_config
+from tjex.config import make_bindings_table
 from tjex.curses_helper import DummyRegion, KeyReader, Region, SubRegion, WindowRegion
 from tjex.jq import (
     Jq,
@@ -84,6 +85,7 @@ def tjex(
     config: Path,
     max_cell_width: int | None,
     slurp: bool,
+    make_hotkey_table: bool = False,
 ) -> int:
     table = TablePanel[TableKey, TableCell](screen)
     prompt_head = TextEditPanel("> ")
@@ -290,6 +292,16 @@ def tjex(
     load_config(
         config, {"global": bindings, "prompt": prompt.bindings, "table": table.bindings}
     )
+    if make_hotkey_table:
+        raise TjexError(
+            make_bindings_table(
+                {
+                    "Global": bindings,
+                    "In Prompt": prompt.bindings,
+                    "In Table": table.bindings,
+                }
+            )
+        )
     if max_cell_width:
         loaded_config.max_cell_width = max_cell_width
 

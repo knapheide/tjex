@@ -45,6 +45,65 @@ or, to get the latest version directly from github:
 pipx install git+https://github.com/knapheide/tjex.git
 ```
 
+## Hotkeys
+
+### Global
+| Key | Function | Description |
+| --- | --- | --- |
+| `C-g` <br> `C-d` | quit |  |
+| `M-o` <br> `C-o` | toggle_active | Toggle active panel between prompt and table |
+| `C-_` <br> `ESC` | undo |  |
+| `M-_` | redo |  |
+| `M-\n` | add_to_history | Append tjex call with current command to shell's history |
+| `g` <br> `\n` | reload | Re-run the current filter. |
+
+### In Prompt
+| Key | Function | Description |
+| --- | --- | --- |
+| `C-_` | undo |  |
+| `M-_` | redo |  |
+| `M-w` | copy | Copy current prompt to clipboard |
+| `C-k` | kill_line | Delete everything to the right of the cursor |
+| `KEY_DC` <br> `C-d` | delete_next_char |  |
+| `M-KEY_DC` <br> `M-d` <br> `C-<delete>` | delete_next_word |  |
+| `KEY_BACKSPACE` | delete_prev_char |  |
+| `M-KEY_BACKSPACE` <br> `C-<backspace>` | delete_prev_word |  |
+| `KEY_RIGHT` <br> `C-f` | forward_char |  |
+| `M-KEY_RIGHT` <br> `C-<right>` <br> `M-<right>` <br> `M-f` | forward_word |  |
+| `KEY_LEFT` <br> `C-b` | backward_char |  |
+| `M-KEY_LEFT` <br> `C-<left>` <br> `M-<left>` <br> `M-b` | backward_word |  |
+| `KEY_END` <br> `C-e` | end |  |
+| `KEY_HOME` <br> `C-a` | home |  |
+| `C-y` | yank |  |
+| `M-y` | rotate |  |
+
+### In Table
+| Key | Function | Description |
+| --- | --- | --- |
+| `KEY_UP` <br> `p` <br> `C-p` | up |  |
+| `KEY_DOWN` <br> `n` <br> `C-n` | down |  |
+| `KEY_LEFT` <br> `b` <br> `C-b` | left |  |
+| `KEY_RIGHT` <br> `f` <br> `C-f` | right |  |
+| `M-<` | first_row | Jump to first row |
+| `M->` | last_row | Jump to last row |
+| `KEY_NPAGE` | next_page |  |
+| `KEY_PPAGE` | prev_page |  |
+| `KEY_END` <br> `C-e` | last_col | Jump to last column |
+| `KEY_HOME` <br> `C-a` | first_col | Jump to first column |
+| `l` | full_width | Toggle: rendering all cells with their full width vs. max_cell_width |
+| `+` | inc_width | Increase max_cell_width by one |
+| `-` | dec_width | Decrease max_cell_width by one |
+| `M-w` | copy_content | Copy output of current command to clipboard |
+| `\n` | enter_cell | Enter highlighted cell by appending selector to jq prompt |
+| `M-\n` | enter_row | Enter highlighted cell's row by appending selector to jq prompt |
+| `w` | copy_cell_content | Copy content of the current cell to clipboard. If content is a string, copy the plain value, not the json representation.  |
+| `E` | expand_row | Expand the selected row |
+| `e` | expand_col | Expand the selected column |
+| `K` | delete_row | Delete the selected row |
+| `k` | delete_col | Delete the selected column |
+| `m` | select_col | Enter the selected column |
+| `s` | sort_by_col | Sort rows by the selected column. Works only for arrays right now.  |
+
 ## Configuration
 
 The default location for the configuration file is `~/.config/tjex/config.toml`.
