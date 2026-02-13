@@ -18,7 +18,7 @@ jobs:
       - name: Common Setup
         uses: ./.github/actions/setup
       - name: Run isort
-        run: uv run --frozen isort .
+        run: uv run --frozen isort --check .
   black:
     name: black
     runs-on: ubuntu-latest
@@ -27,7 +27,7 @@ jobs:
       - name: Common Setup
         uses: ./.github/actions/setup
       - name: Run black
-        run: uv run --frozen black .
+        run: uv run --frozen black --check .
   basedpyright:
     name: basedpyright
     runs-on: ubuntu-latest
