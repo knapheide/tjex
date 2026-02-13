@@ -242,7 +242,9 @@ def tjex(
         key = table.col_key
         if key == Undefined():
             raise TjexError("Not an array or object")
-        prompt_append(f"map_values(expand({json.dumps(key, ensure_ascii=False)}))", table.state)
+        prompt_append(
+            f"map_values(expand({json.dumps(key, ensure_ascii=False)}))", table.state
+        )
 
     @table.bindings.add("K")
     def delete_row(_: Any):  # pyright: ignore[reportUnusedFunction]
@@ -381,7 +383,11 @@ def main():
                 KeyReader(scr).get,
                 scr.erase,
                 scr.refresh,
-                **{n: k for n, k in vars(args).items() if n not in {"logfile", "null_input"}},
+                **{
+                    n: k
+                    for n, k in vars(args).items()
+                    if n not in {"logfile", "null_input"}
+                },
             )
 
     return result

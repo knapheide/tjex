@@ -33,6 +33,7 @@ def make_table():
             return e.msg
         raise TjexError("Something went wrong")
 
+
 def main(readme: Path | None):
     set_start_method("forkserver")
 

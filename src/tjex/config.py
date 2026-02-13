@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess as sp
 import tomllib
 from base64 import b64encode
@@ -6,7 +7,6 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, TypeVar
-import re
 
 from tjex.curses_helper import KEY_ALIASES
 from tjex.panel import KeyBindings

@@ -121,7 +121,9 @@ def run_case(path: Path, update: bool):
                 (
                     Path(i)
                     if isinstance(i, str)
-                    else tmpfile("\n".join(json.dumps(j, ensure_ascii=False) for j in i))
+                    else tmpfile(
+                        "\n".join(json.dumps(j, ensure_ascii=False) for j in i)
+                    )
                 )
                 for i in test_case["inputs"]
             ],
