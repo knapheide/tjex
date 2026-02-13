@@ -54,7 +54,11 @@ class Config:
 
     def do_copy(self, s: str):
         if self.copy_command is None:
-            print("\033]52;c;{}\a".format(b64encode(s.encode()).decode()))
+            print(
+                "\033]52;c;{}\a".format(b64encode(s.encode()).decode()),
+                end="",
+                flush=True,
+            )
         else:
             result = sp.run(
                 ["bash", "-c", self.copy_command],
