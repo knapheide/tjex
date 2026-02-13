@@ -356,11 +356,14 @@ def main():
     _ = parser.add_argument("--logfile", type=Path)
     _ = parser.add_argument("-w", "--max-cell-width", type=int)
     _ = parser.add_argument("-s", "--slurp", action="store_true")
+    _ = parser.add_argument("-n", "--null-input", action="store_true")
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
     logging.setup(args.logfile)
 
     with TmpFiles() as tmpfile:
+        if args.null_input:
+            args.file = [tmpfile("null")]
         if not args.file:
             args.file = [tmpfile(sys.stdin.read())]
             os.close(0)
@@ -378,7 +381,7 @@ def main():
                 KeyReader(scr).get,
                 scr.erase,
                 scr.refresh,
-                **{n: k for n, k in vars(args).items() if n not in {"logfile"}},
+                **{n: k for n, k in vars(args).items() if n not in {"logfile", "null_input"}},
             )
 
     return result
