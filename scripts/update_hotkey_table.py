@@ -16,22 +16,15 @@ def make_table():
     screen = DummyRegion(Point(0, 0))
 
     with TmpFiles() as tmpfile:
-        try:
-            _ = tjex.tjex(
-                screen,
-                lambda: None,
-                screen.clear,
-                lambda: None,
-                [tmpfile("[]")],
-                "",
-                tmpfile(""),
-                50,
-                False,
-                make_hotkey_table=True,
-            )
-        except TjexError as e:
-            return e.msg
-        raise TjexError("Something went wrong")
+        tjex_main = tjex.Tjex(
+            screen,
+            [tmpfile("[]")],
+            "",
+            tmpfile(""),
+            50,
+            False,
+        )
+        return tjex_main.make_hotkey_table()
 
 
 def main(readme: Path | None):

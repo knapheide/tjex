@@ -112,11 +112,8 @@ def run_case(path: Path, update: bool):
     with TmpFiles() as tmpfile:
         for k, v in vars(tjex_config.Config()).items():
             setattr(tjex_config.config, k, v)
-        assert 0 == tjex.tjex(
+        tjex_main = tjex.Tjex(
             screen,
-            lambda: next(key_reader),
-            screen.clear,
-            lambda: None,
             [
                 (
                     Path(i)
@@ -132,6 +129,7 @@ def run_case(path: Path, update: bool):
             50,
             False,
         )
+        assert 0 == tjex_main.run(lambda: next(key_reader), screen.clear, lambda: None)
 
     if update:
         with open(path, "w") as f:
