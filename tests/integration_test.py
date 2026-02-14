@@ -112,11 +112,8 @@ def run_case(path: Path, update: bool):
     with TmpFiles() as tmpfile:
         for k, v in vars(tjex_config.Config()).items():
             setattr(tjex_config.config, k, v)
-        assert 0 == tjex.tjex(
+        tjex_main = tjex.Tjex(
             screen,
-            lambda: next(key_reader),
-            screen.clear,
-            lambda: None,
             [
                 (
                     Path(i)
@@ -128,10 +125,10 @@ def run_case(path: Path, update: bool):
                 for i in test_case["inputs"]
             ],
             "",
-            tmpfile("".join(l + "\n" for l in test_case.get("config", []))),
-            50,
             False,
         )
+        tjex_config.load(test_case.get("config", {}), tjex_main.bindings_list())
+        assert 0 == tjex_main.run(lambda: next(key_reader), screen.clear, lambda: None)
 
     if update:
         with open(path, "w") as f:
