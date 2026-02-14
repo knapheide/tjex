@@ -114,15 +114,19 @@ def apply_bindings(bindings: dict[str, KeyBindings[Any, Any]]):
             )
 
 
-def load(
+def load(config_dict: Any, bindings: dict[str, KeyBindings[Any, Any]]) -> None:
+    for k, v in config_dict.items():
+        setattr(config, k, v)
+    apply_bindings(bindings)
+
+
+def load_config_file(
     config_file: Path,
     bindings: dict[str, KeyBindings[Any, Any]],
 ) -> None:
     if config_file.exists():
         with open(config_file, "rb") as f:
-            for k, v in tomllib.load(f).items():
-                setattr(config, k, v)
-        apply_bindings(bindings)
+            load(tomllib.load(f), bindings)
     else:
         config_file.parent.mkdir(parents=True, exist_ok=True)
         with open(config_file, "w") as f:

@@ -6,25 +6,17 @@ from pathlib import Path
 from tjex import tjex
 from tjex.curses_helper import DummyRegion
 from tjex.point import Point
-from tjex.utils import TjexError, TmpFiles
+from tjex.utils import TmpFiles
 
 # Stub out curses functions that might get called
 curses.color_pair = lambda _: 0  # pyright: ignore[reportUnknownLambdaType]
 
 
 def make_table():
-    screen = DummyRegion(Point(0, 0))
-
     with TmpFiles() as tmpfile:
-        tjex_main = tjex.Tjex(
-            screen,
-            [tmpfile("[]")],
-            "",
-            tmpfile(""),
-            50,
-            False,
-        )
-        return tjex_main.make_hotkey_table()
+        return tjex.Tjex(
+            DummyRegion(Point(0, 0)), [tmpfile("[]")], "", False
+        ).make_hotkey_table()
 
 
 def main(readme: Path | None):

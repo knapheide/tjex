@@ -19,8 +19,7 @@ import argcomplete
 
 from tjex import curses_helper, logging
 from tjex.config import config as loaded_config
-from tjex.config import load as load_config
-from tjex.config import make_bindings_table
+from tjex.config import load_config_file, make_bindings_table
 from tjex.curses_helper import DummyRegion, KeyReader, Region, SubRegion, WindowRegion
 from tjex.jq import (
     Jq,
@@ -81,8 +80,6 @@ class Tjex:
         screen: Region,
         file: list[Path],
         command: str,
-        config: Path,
-        max_cell_width: int | None,
         slurp: bool,
     ):
         self.screen: Region = screen
@@ -256,16 +253,12 @@ class Tjex:
                     self.table.state.col_only,
                 )
 
-        load_config(
-            config,
-            {
-                "global": self.bindings,
-                "prompt": self.prompt.bindings,
-                "table": self.table.bindings,
-            },
-        )
-        if max_cell_width:
-            loaded_config.max_cell_width = max_cell_width
+    def bindings_list(self):
+        return {
+            "global": self.bindings,
+            "prompt": self.prompt.bindings,
+            "table": self.table.bindings,
+        }
 
     def make_hotkey_table(self):
         return make_bindings_table(
@@ -421,12 +414,13 @@ def main():
             curses_helper.setup_plain_colors()
             tjex_main = Tjex(
                 WindowRegion(scr),
-                **{
-                    n: k
-                    for n, k in vars(args).items()
-                    if n not in {"logfile", "null_input"}
-                },
+                args.file,
+                args.command,
+                args.slurp,
             )
+            load_config_file(args.config, tjex_main.bindings_list())
+            if args.max_cell_width:
+                loaded_config.max_cell_width = args.max_cell_width
             return tjex_main.run(KeyReader(scr).get, scr.erase, scr.refresh)
 
     return result

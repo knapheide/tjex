@@ -125,10 +125,9 @@ def run_case(path: Path, update: bool):
                 for i in test_case["inputs"]
             ],
             "",
-            tmpfile("".join(l + "\n" for l in test_case.get("config", []))),
-            50,
             False,
         )
+        tjex_config.load(test_case.get("config", {}), tjex_main.bindings_list())
         assert 0 == tjex_main.run(lambda: next(key_reader), screen.clear, lambda: None)
 
     if update:
