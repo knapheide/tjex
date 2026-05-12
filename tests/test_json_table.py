@@ -3,7 +3,13 @@ import curses
 import pytest
 
 from tjex.curses_helper import DummyRegion
-from tjex.json_table import Json, JsonCellFormatter, TableCell, to_table_cell
+from tjex.json_table import (
+    Json,
+    JsonCellFormatter,
+    TableCell,
+    collect_keys,
+    to_table_cell,
+)
 from tjex.point import Point
 
 # Stub out curses functions that might get called
@@ -43,3 +49,8 @@ def test_column_formatter(
     assert ref == [cell_to_string(formatter, cell, max_width) for cell in cells]
     assert formatter.width == width, "width mismatch"
     assert formatter.min_width == min_width, "min_width mismatch"
+
+
+def test_collect_keys_order():
+    keys = [str(i) for i in range(16)]
+    assert keys == collect_keys([[k] for k in keys])
