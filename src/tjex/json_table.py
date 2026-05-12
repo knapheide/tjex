@@ -114,10 +114,10 @@ def compare_prefix_len(base: str | None, a: str, b: str):
     if base is None:
         return True
     for i, c in enumerate(base):
-        if i >= len(a) or a[i] != c:
-            return False
         if i >= len(b) or b[i] != c:
             return True
+        if i >= len(a) or a[i] != c:
+            return False
     return True
 
 
@@ -127,6 +127,21 @@ def merge_keys(a_set: set[str], a: list[str], b: list[str]):
     # Using a dict because it preserves insertion order
     res: dict[str, None] = {}
     prev_key = None
+
+    def take_a():
+        nonlocal ia, prev_key
+        if a[ia] not in res:
+            prev_key = a[ia]
+            res[a[ia]] = None
+        ia += 1
+
+    def take_b():
+        nonlocal ib, prev_key
+        if b[ib] not in res:
+            prev_key = b[ib]
+            res[b[ib]] = None
+        ib += 1
+
     while True:
         if ia >= len(a):
             return list(res.keys()) + b[ib:]
@@ -134,30 +149,25 @@ def merge_keys(a_set: set[str], a: list[str], b: list[str]):
             return list(res.keys()) + a[ia:]
 
         if a[ia] in res:
-            ia += 1
+            take_a()
         elif b[ib] in res:
-            ib += 1
+            take_b()
         elif a[ia] == b[ib]:
-            res[a[ia]] = None
-            prev_key = a[ia]
-            ia += 1
-            ib += 1
+            take_a()
+            take_b()
         elif b[ib] in a_set:
-            res[a[ia]] = None
-            prev_key = a[ia]
-            ia += 1
+            take_a()
         elif a[ia] in b_set:
-            res[b[ib]] = None
-            prev_key = b[ib]
-            ib += 1
+            take_b()
+        elif a[ia].isnumeric() and b[ib].isnumeric():
+            if int(a[ia]) < int(b[ib]):
+                take_a()
+            else:
+                take_b()
         elif compare_prefix_len(prev_key, a[ia], b[ib]):
-            res[a[ia]] = None
-            prev_key = a[ia]
-            ia += 1
+            take_a()
         else:
-            res[b[ib]] = None
-            prev_key = b[ib]
-            ib += 1
+            take_b()
 
 
 def collect_keys(entries: Iterable[Iterable[TableKey]]):
@@ -321,7 +331,7 @@ class JsonCellFormatter(CellFormatter[TableCell]):
 def json_to_table(v: Json) -> Table[int | str | Undefined, TableCell]:
     content = to_table_content(v)
 
-    row_keys = collect_keys([r] for r in content.keys())
+    row_keys = collect_keys([content.keys()])
     row_headers = [to_table_cell(r) for r in row_keys]
     col_keys = collect_keys(r.keys() for r in content.values())
     col_headers = [to_table_cell(c) for c in col_keys]
