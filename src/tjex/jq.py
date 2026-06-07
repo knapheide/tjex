@@ -3,13 +3,16 @@ from __future__ import annotations
 import importlib.resources
 import json
 import re
+import shutil
 import subprocess as sp
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, get_start_method
 from pathlib import Path
 from queue import Empty
+from threading import Thread
+from typing import cast
 
-from tjex.config import Config, config
+from tjex.config import config
 from tjex.json_table import Json, TableCell, TableKey, Undefined, json_to_table
 from tjex.table import Table
 from tjex.utils import TjexError
@@ -66,6 +69,58 @@ def append_selector(command: str, selector: str):
     return command + " | " + standalone_selector(selector)
 
 
+def run(command: list[str], inputs: list[Path]):
+    p = sp.Popen(
+        command,
+        stdin=sp.PIPE,
+        stdout=sp.PIPE,
+        stderr=sp.PIPE,
+        text=True,
+    )
+
+    feed_exception = cast(Exception | None, None)
+
+    def feed():
+        nonlocal feed_exception
+        assert p.stdin is not None
+        try:
+            for file in inputs:
+                with open(file) as f:
+                    try:
+                        shutil.copyfileobj(f, p.stdin)
+                    except OSError:
+                        # The OSError was probably just because the jq process died.
+                        return
+        except Exception as e:
+            feed_exception = e
+        finally:
+            p.stdin.close()
+
+    feed_thread = Thread(target=feed, daemon=True)
+    feed_thread.start()
+
+    json_exception = None
+    assert p.stdout is not None
+    data: Json = None
+    try:
+        data = json.load(p.stdout)
+    except Exception as e:
+        json_exception = e
+    assert p.stderr is not None
+    stderr = p.stderr.read()
+    _ = p.wait()
+    feed_thread.join()
+    if isinstance(feed_exception, OSError):
+        raise feed_exception
+    if p.returncode != 0:
+        raise JqError(stderr)
+    if json_exception is not None:
+        raise json_exception
+    if feed_exception is not None:
+        raise feed_exception
+    return data
+
+
 class Jq:
     command: str | None = None
     result: Queue[JqResult] | None = None
@@ -82,23 +137,13 @@ class Jq:
         )
 
     @staticmethod
-    def run(command: list[str], result: Queue[JqResult], _config: Config):
-        # Update global config in subprocess
-        for k, v in vars(_config).items():
-            setattr(config, k, v)
+    def run(command: list[str], inputs: list[Path], result: Queue[JqResult]):
         try:
-            res = sp.run(
-                command,
-                capture_output=True,
-            )
-            if res.returncode == 0:
-                data: Json = json.loads(res.stdout.decode("utf8"))
-                if data is None:
-                    result.put(JqResult("null", None))
-                else:
-                    result.put(JqResult("", json_to_table(data)))
+            data = run(command, inputs)
+            if data is None:
+                result.put(JqResult("null", None))
             else:
-                result.put(JqResult(res.stderr.decode("utf8"), None))
+                result.put(JqResult("", json_to_table(data)))
         except BaseException as e:
             result.put(JqResult(str(e), None))
 
@@ -119,10 +164,9 @@ class Jq:
                         config.jq_command,
                         *self.extra_args,
                         self.prelude + (command or "."),
-                        *self.file,
                     ],
+                    self.file,
                     self.result,
-                    config,
                 ),
             )
             self.process.start()
@@ -146,15 +190,11 @@ class Jq:
     def run_plain(self, command: str | None = None) -> Json:
         if command is None:
             command = self.command
-        res = sp.run(
+        return run(
             [
                 config.jq_command,
                 *self.extra_args,
                 self.prelude + (command or "."),
-                *self.file,
             ],
-            capture_output=True,
+            self.file,
         )
-        if res.returncode != 0:
-            raise JqError(res.stderr.decode("utf8"))
-        return json.loads(res.stdout.decode("utf8"))
