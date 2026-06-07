@@ -7,6 +7,14 @@ runs:
       with:
         packages: jq gojq
         version: 1.0
+    - name: Install jaq
+      shell: bash
+      run: |
+        mkdir -p ~/.local/bin
+        cd ~/.local/bin
+        curl -fsSL https://github.com/01mf02/jaq/releases/latest/download/jaq-$(uname -m)-unknown-linux-musl -o jaq
+        chmod +x jaq
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
     - name: Install uv
       uses: astral-sh/setup-uv@v7
       with:
