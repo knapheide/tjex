@@ -94,7 +94,10 @@ def run(command: list[str], inputs: list[Path]):
         except Exception as e:
             feed_exception = e
         finally:
-            p.stdin.close()
+            try:
+                p.stdin.close()
+            except BrokenPipeError:
+                pass
 
     feed_thread = Thread(target=feed, daemon=True)
     feed_thread.start()
